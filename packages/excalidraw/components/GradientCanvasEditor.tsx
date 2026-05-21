@@ -324,17 +324,7 @@ export const GradientCanvasEditor = ({
     };
 
   return (
-    <svg
-      className="gradient-canvas-editor"
-      width={appState.width}
-      height={appState.height}
-      style={{
-        left: 0,
-        top: 0,
-        width: appState.width,
-        height: appState.height,
-      }}
-    >
+    <svg className="gradient-canvas-editor">
       {handles.type === "linear" ? (
         <g>
           <line

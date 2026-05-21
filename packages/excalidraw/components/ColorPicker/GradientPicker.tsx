@@ -11,7 +11,6 @@ import {
 import type { BackgroundGradient } from "@excalidraw/element/types";
 
 import { t } from "../../i18n";
-import { Range } from "../Range";
 
 import PickerHeading from "./PickerHeading";
 
@@ -62,10 +61,22 @@ export const GradientPicker = ({
   };
 
   const updateGradient = (partial: Partial<BackgroundGradient>) => {
-    onGradientChange({
-      ...currentGradient,
-      ...partial,
-    });
+    let next: BackgroundGradient = { ...currentGradient, ...partial };
+    if (partial.type && partial.type !== currentGradient.type) {
+      next =
+        partial.type === "linear"
+          ? {
+              ...next,
+              start: next.start ?? { x: 0, y: 0.5 },
+              end: next.end ?? { x: 1, y: 0.5 },
+            }
+          : {
+              ...next,
+              center: next.center ?? { x: 0.5, y: 0.5 },
+              radius: next.radius ?? 1,
+            };
+    }
+    onGradientChange(next);
   };
 
   const addStop = () => {
@@ -187,16 +198,15 @@ export const GradientPicker = ({
               </button>
             )}
           </div>
-          <Range
-            label={t("colorPicker.gradientAngle")}
-            value={currentGradient.angle}
-            onChange={(angle) => updateGradient({ angle })}
-            min={0}
-            max={360}
-            step={1}
-            minLabel="0°"
-            hasCommonValue
-          />
+          <div
+            className="color-picker__gradient-hint"
+            role="note"
+            aria-live="polite"
+          >
+            {currentGradient.type === "linear"
+              ? t("colorPicker.gradientLinearHint")
+              : t("colorPicker.gradientRadialHint")}
+          </div>
         </>
       )}
     </div>

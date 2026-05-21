@@ -1,0 +1,54 @@
+.gradient-canvas-editor {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: var(--zIndex-svgLayer, 4);
+  overflow: visible;
+
+  &__line {
+    stroke: var(--color-primary, #6965db);
+    stroke-width: 2;
+    stroke-linecap: round;
+    pointer-events: none;
+  }
+
+  &__line--outline {
+    stroke: rgba(255, 255, 255, 0.95);
+    stroke-width: 4;
+  }
+
+  &__radius-ring {
+    fill: none;
+    stroke: var(--color-primary, #6965db);
+    stroke-width: 2;
+    stroke-dasharray: 4 4;
+    pointer-events: none;
+  }
+
+  &__handle {
+    fill: #ffffff;
+    stroke: var(--color-primary, #6965db);
+    stroke-width: 2;
+    cursor: grab;
+    pointer-events: auto;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+
+    &:active {
+      cursor: grabbing;
+    }
+
+    &--mid {
+      fill: var(--color-primary, #6965db);
+      stroke: #ffffff;
+      stroke-width: 1.5;
+    }
+
+    &--edge {
+      fill: var(--color-primary, #6965db);
+      stroke: #ffffff;
+      stroke-width: 1.5;
+    }
+  }
+}

@@ -606,10 +606,16 @@
     "linearGradient": "Linear",
     "radialGradient": "Radial",
     "gradientStops": "Gradient colors",
-    "gradientAngle": "Gradient angle",
     "gradientStop": "Color stop {{index}}",
     "addColorStop": "Add color stop",
-    "removeColorStop": "Remove color stop"
+    "removeColorStop": "Remove color stop",
+    "gradientLinearHint": "Drag the line endpoints on the shape to rotate or slide the gradient.",
+    "gradientRadialHint": "Drag the center handle to move the radial gradient, drag the edge handle to resize it.",
+    "gradientHandleLinearStart": "Linear gradient start handle",
+    "gradientHandleLinearEnd": "Linear gradient end handle",
+    "gradientHandleLinearMid": "Linear gradient axis handle",
+    "gradientHandleRadialCenter": "Radial gradient center handle",
+    "gradientHandleRadialEdge": "Radial gradient radius handle"
   },
   "overwriteConfirm": {
     "action": {

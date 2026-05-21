@@ -555,4 +555,15 @@
     color: var(--text-primary-color);
     cursor: pointer;
   }
+
+  .color-picker__gradient-hint {
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: var(--border-radius-lg);
+    background: var(--island-bg-color, var(--button-bg));
+    color: var(--text-primary-color);
+    opacity: 0.75;
+    font-size: 0.6875rem;
+    line-height: 1.3;
+  }
 }

@@ -34,6 +34,24 @@ describe("restoreElements", () => {
     mockSizeHelper.mockRestore();
   });
 
+  it("should restore backgroundGradient on elements", () => {
+    const rectElement = API.createElement({
+      type: "rectangle",
+      backgroundGradient: {
+        type: "linear",
+        colors: ["#ff0000", "#0000ff", "#00ff00"],
+        angle: 45,
+      },
+    } as Parameters<typeof API.createElement>[0]);
+
+    const [restored] = restore.restoreElements([rectElement], null);
+    expect(restored.backgroundGradient).toEqual({
+      type: "linear",
+      colors: ["#ff0000", "#0000ff", "#00ff00"],
+      angle: 45,
+    });
+  });
+
   it("basic restoreElements", () => {
     const textElement = API.createElement({ type: "text" });
     const rectElement = API.createElement({ type: "rectangle" });

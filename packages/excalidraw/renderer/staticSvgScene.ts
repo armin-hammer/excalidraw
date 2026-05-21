@@ -30,7 +30,11 @@ import {
 
 import { getContainingFrame } from "@excalidraw/element";
 
-import { getCornerRadius, isPathALoop } from "@excalidraw/element";
+import {
+  getCornerRadius,
+  isPathALoop,
+  renderSvgBackgroundGradientFill,
+} from "@excalidraw/element";
 
 import { ShapeCache } from "@excalidraw/element";
 
@@ -159,22 +163,33 @@ const renderElementToSvg = (
         node.setAttribute("fill-opacity", `${opacity}`);
       }
       node.setAttribute("stroke-linecap", "round");
-      node.setAttribute(
-        "transform",
-        `translate(${offsetX || 0} ${
-          offsetY || 0
-        }) rotate(${degree} ${cx} ${cy})`,
+      const transform = `translate(${offsetX || 0} ${
+        offsetY || 0
+      }) rotate(${degree} ${cx} ${cy})`;
+      node.setAttribute("transform", transform);
+
+      const gradientFill = renderSvgBackgroundGradientFill(
+        svgRoot,
+        element,
+        transform,
+        opacity,
+        renderConfig.theme === THEME.DARK,
       );
+      const nodesToRender = gradientFill ? [gradientFill, node] : [node];
 
       const g = maybeWrapNodesInFrameClipPath(
         element,
         root,
-        [node],
+        nodesToRender,
         renderConfig.frameRendering,
         elementsMap,
       );
 
-      addToRoot(g || node, element);
+      if (g) {
+        addToRoot(g, element);
+      } else {
+        nodesToRender.forEach((n) => addToRoot(n, element));
+      }
       break;
     }
     case "iframe":
@@ -186,18 +201,27 @@ const renderElementToSvg = (
         shape,
         MAX_DECIMALS_FOR_SVG_EXPORT,
       );
-      const opacity = element.opacity / 100;
-      if (opacity !== 1) {
-        node.setAttribute("stroke-opacity", `${opacity}`);
-        node.setAttribute("fill-opacity", `${opacity}`);
+      const embedOpacity = element.opacity / 100;
+      if (embedOpacity !== 1) {
+        node.setAttribute("stroke-opacity", `${embedOpacity}`);
+        node.setAttribute("fill-opacity", `${embedOpacity}`);
       }
       node.setAttribute("stroke-linecap", "round");
-      node.setAttribute(
-        "transform",
-        `translate(${offsetX || 0} ${
-          offsetY || 0
-        }) rotate(${degree} ${cx} ${cy})`,
+      const embedTransform = `translate(${offsetX || 0} ${
+        offsetY || 0
+      }) rotate(${degree} ${cx} ${cy})`;
+      node.setAttribute("transform", embedTransform);
+
+      const embedGradientFill = renderSvgBackgroundGradientFill(
+        svgRoot,
+        element,
+        embedTransform,
+        embedOpacity,
+        renderConfig.theme === THEME.DARK,
       );
+      if (embedGradientFill) {
+        addToRoot(embedGradientFill, element);
+      }
       addToRoot(node, element);
 
       const label: ExcalidrawElement =
@@ -331,6 +355,22 @@ const renderElementToSvg = (
       }
       group.setAttribute("stroke-linecap", "round");
 
+      const lineTransform = `translate(${offsetX || 0} ${
+        offsetY || 0
+      }) rotate(${degree} ${cx} ${cy})`;
+      if (element.type === "line") {
+        const gradientFill = renderSvgBackgroundGradientFill(
+          svgRoot,
+          element,
+          lineTransform,
+          opacity,
+          renderConfig.theme === THEME.DARK,
+        );
+        if (gradientFill) {
+          group.appendChild(gradientFill);
+        }
+      }
+
       const shapes = ShapeCache.generateElementShape(element, renderConfig);
       shapes.forEach((shape) => {
         const node = roughSVGDrawWithPrecision(
@@ -376,6 +416,17 @@ const renderElementToSvg = (
     }
     case "freedraw": {
       const wrapper = svgRoot.ownerDocument.createElementNS(SVG_NS, "g");
+
+      const freedrawGradientFill = renderSvgBackgroundGradientFill(
+        svgRoot,
+        element,
+        null,
+        opacity,
+        renderConfig.theme === THEME.DARK,
+      );
+      if (freedrawGradientFill) {
+        wrapper.appendChild(freedrawGradientFill);
+      }
 
       const shapes = ShapeCache.generateElementShape(element, renderConfig);
       // always ordered as [background, stroke]

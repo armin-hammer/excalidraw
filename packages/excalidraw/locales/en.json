@@ -598,7 +598,18 @@
     "colors": "Colors",
     "shades": "Shades",
     "hexCode": "Hex code",
-    "noShades": "No shades available for this color"
+    "noShades": "No shades available for this color",
+    "fillType": "Fill type",
+    "solid": "Solid",
+    "gradient": "Gradient",
+    "gradientType": "Gradient type",
+    "linearGradient": "Linear",
+    "radialGradient": "Radial",
+    "gradientStops": "Gradient colors",
+    "gradientAngle": "Gradient angle",
+    "gradientStop": "Color stop {{index}}",
+    "addColorStop": "Add color stop",
+    "removeColorStop": "Remove color stop"
   },
   "overwriteConfirm": {
     "action": {

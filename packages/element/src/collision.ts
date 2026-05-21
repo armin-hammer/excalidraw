@@ -1,4 +1,4 @@
-import { invariant, isTransparent, type Bounds } from "@excalidraw/common";
+import { invariant, type Bounds } from "@excalidraw/common";
 import {
   curveIntersectLineSegment,
   isPointWithinBounds,
@@ -27,6 +27,7 @@ import type {
 
 import type { FrameNameBounds } from "@excalidraw/excalidraw/types";
 
+import { isElementFilled } from "./gradient";
 import { isPathALoop } from "./utils";
 import {
   doBoundsIntersect,
@@ -85,7 +86,7 @@ export const shouldTestInside = (element: ExcalidrawElement) => {
   }
 
   const isDraggableFromInside =
-    (hasBackground(element.type) && !isTransparent(element.backgroundColor)) ||
+    (hasBackground(element.type) && isElementFilled(element)) ||
     hasBoundTextElement(element) ||
     isIframeLikeElement(element) ||
     isTextElement(element);
@@ -326,10 +327,7 @@ export const getAllHoveredElementAtPoint = (
     ) {
       candidateElements.push(element);
 
-      if (
-        hasBackground(element.type) &&
-        !isTransparent(element.backgroundColor)
-      ) {
+      if (hasBackground(element.type) && isElementFilled(element)) {
         break;
       }
     }

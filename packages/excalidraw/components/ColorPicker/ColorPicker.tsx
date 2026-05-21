@@ -9,9 +9,15 @@ import {
   isWritableElement,
 } from "@excalidraw/common";
 
+import { updateGradientStopColor } from "@excalidraw/element";
+
+import { getGradientPreviewCss } from "@excalidraw/element";
+
 import type { ColorTuple, ColorPaletteCustom } from "@excalidraw/common";
 
 import type { ExcalidrawElement } from "@excalidraw/element/types";
+
+import type { BackgroundGradient } from "@excalidraw/element/types";
 
 import { useAtom } from "../../editor-jotai";
 import { t } from "../../i18n";
@@ -46,6 +52,8 @@ interface ColorPickerProps {
    */
   color: string | null;
   onChange: (color: string) => void;
+  gradient?: BackgroundGradient | null;
+  onGradientChange?: (gradient: BackgroundGradient | null) => void;
   label: string;
   elements: readonly ExcalidrawElement[];
   appState: AppState;
@@ -58,6 +66,8 @@ const ColorPickerPopupContent = ({
   type,
   color,
   onChange,
+  gradient = null,
+  onGradientChange,
   label,
   elements,
   palette = COLOR_PALETTE,
@@ -69,6 +79,8 @@ const ColorPickerPopupContent = ({
   | "type"
   | "color"
   | "onChange"
+  | "gradient"
+  | "onGradientChange"
   | "label"
   | "elements"
   | "palette"
@@ -85,15 +97,25 @@ const ColorPickerPopupContent = ({
 
   const [eyeDropperState, setEyeDropperState] = useAtom(activeEyeDropperAtom);
 
+  const handleColorChange = (changedColor: string) => {
+    if (type === "elementBackground" && gradient && onGradientChange) {
+      onGradientChange(updateGradientStopColor(gradient, 0, changedColor));
+      return;
+    }
+    onChange(changedColor);
+  };
+
   const colorInputJSX = (
     <div>
       <PickerHeading>{t("colorPicker.hexCode")}</PickerHeading>
       <ColorInput
-        color={color || ""}
+        color={
+          gradient && type === "elementBackground"
+            ? gradient.colors[0] ?? color ?? ""
+            : color || ""
+        }
         label={label}
-        onChange={(color) => {
-          onChange(color);
-        }}
+        onChange={handleColorChange}
         colorPickerType={type}
         placeholder={t("colorPicker.color")}
       />
@@ -158,7 +180,7 @@ const ColorPickerPopupContent = ({
               ? saveCaretPosition()
               : null;
 
-            onChange(changedColor);
+            handleColorChange(changedColor);
 
             // Restore caret position after color change if editing text
             if (appState.editingTextElement && savedSelection) {
@@ -170,7 +192,7 @@ const ColorPickerPopupContent = ({
               if (force) {
                 state = state || {
                   keepOpenOnAlt: true,
-                  onSelect: onChange,
+                  onSelect: handleColorChange,
                   colorPickerType: type,
                 };
                 state.keepOpenOnAlt = true;
@@ -181,7 +203,7 @@ const ColorPickerPopupContent = ({
                 ? null
                 : {
                     keepOpenOnAlt: false,
-                    onSelect: onChange,
+                    onSelect: handleColorChange,
                     colorPickerType: type,
                   };
             });
@@ -195,6 +217,8 @@ const ColorPickerPopupContent = ({
             }
           }}
           type={type}
+          gradient={gradient}
+          onGradientChange={onGradientChange}
           elements={elements}
           updateData={updateData}
           showTitle={isCompactMode}
@@ -212,12 +236,14 @@ const ColorPickerPopupContent = ({
 const ColorPickerTrigger = ({
   label,
   color,
+  gradient = null,
   type,
   mode = "background",
   onToggle,
   editingTextElement,
 }: {
   color: string | null;
+  gradient?: BackgroundGradient | null;
   label: string;
   type: ColorPickerType;
   mode?: "background" | "stroke";
@@ -251,7 +277,16 @@ const ColorPickerTrigger = ({
         "mobile-border": isMobileMode,
       })}
       aria-label={label}
-      style={color ? { "--swatch-color": color } : undefined}
+      style={
+        gradient
+          ? ({
+              backgroundImage: getGradientPreviewCss(gradient),
+              "--swatch-color": gradient.colors[0],
+            } as React.CSSProperties)
+          : color
+          ? { "--swatch-color": color }
+          : undefined
+      }
       title={
         type === "elementStroke"
           ? t("labels.showStroke")
@@ -283,6 +318,8 @@ export const ColorPicker = ({
   type,
   color,
   onChange,
+  gradient = null,
+  onGradientChange,
   label,
   elements,
   palette = COLOR_PALETTE,
@@ -326,6 +363,7 @@ export const ColorPicker = ({
           {/* serves as an active color indicator as well */}
           <ColorPickerTrigger
             color={color}
+            gradient={gradient}
             label={label}
             type={type}
             mode={type === "elementStroke" ? "stroke" : "background"}
@@ -349,6 +387,8 @@ export const ColorPicker = ({
               type={type}
               color={color}
               onChange={onChange}
+              gradient={gradient}
+              onGradientChange={onGradientChange}
               label={label}
               elements={elements}
               palette={palette}

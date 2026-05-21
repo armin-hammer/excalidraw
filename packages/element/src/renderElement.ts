@@ -43,6 +43,7 @@ import type {
 } from "@excalidraw/excalidraw/scene/types";
 
 import { getElementAbsoluteCoords, getElementBounds } from "./bounds";
+import { drawBackgroundGradientFill } from "./gradient";
 import { getUncroppedImageElement } from "./cropElement";
 import { LinearElementEditor } from "./linearElementEditor";
 import {
@@ -400,6 +401,12 @@ const drawElementOnCanvas = (
       context.lineCap = "round";
 
       rc.draw(ShapeCache.generateElementShape(element, renderConfig));
+      drawBackgroundGradientFill(
+        context,
+        element,
+        renderConfig.theme === THEME.DARK,
+        element.opacity / 100,
+      );
       break;
     }
     case "arrow":
@@ -412,6 +419,12 @@ const drawElementOnCanvas = (
           rc.draw(shape);
         },
       );
+      drawBackgroundGradientFill(
+        context,
+        element,
+        renderConfig.theme === THEME.DARK,
+        element.opacity / 100,
+      );
       break;
     }
     case "freedraw": {
@@ -421,14 +434,25 @@ const drawElementOnCanvas = (
       const shapes = ShapeCache.generateElementShape(element, renderConfig);
 
       for (const shape of shapes) {
+        if (typeof shape !== "string") {
+          rc.draw(shape);
+        }
+      }
+
+      drawBackgroundGradientFill(
+        context,
+        element,
+        renderConfig.theme === THEME.DARK,
+        element.opacity / 100,
+      );
+
+      for (const shape of shapes) {
         if (typeof shape === "string") {
           context.fillStyle =
             renderConfig.theme === THEME.DARK
               ? applyDarkModeFilter(element.strokeColor)
               : element.strokeColor;
           context.fill(new Path2D(shape));
-        } else {
-          rc.draw(shape);
         }
       }
 

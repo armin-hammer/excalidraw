@@ -42,6 +42,7 @@ import type {
   SVGPathString,
 } from "@excalidraw/excalidraw/scene/types";
 
+import { shouldRenderBackgroundGradient } from "./gradient";
 import { elementWithCanvasCache } from "./renderElement";
 
 import {
@@ -232,11 +233,15 @@ export const generateRoughOptions = (
     case "diamond":
     case "ellipse": {
       options.fillStyle = element.fillStyle;
-      options.fill = isTransparent(element.backgroundColor)
-        ? undefined
-        : isDarkMode
-        ? applyDarkModeFilter(element.backgroundColor)
-        : element.backgroundColor;
+      if (shouldRenderBackgroundGradient(element)) {
+        options.fill = undefined;
+      } else {
+        options.fill = isTransparent(element.backgroundColor)
+          ? undefined
+          : isDarkMode
+          ? applyDarkModeFilter(element.backgroundColor)
+          : element.backgroundColor;
+      }
       if (element.type === "ellipse") {
         options.curveFitting = 1;
       }
@@ -246,12 +251,16 @@ export const generateRoughOptions = (
     case "freedraw": {
       if (isPathALoop(element.points)) {
         options.fillStyle = element.fillStyle;
-        options.fill =
-          element.backgroundColor === "transparent"
-            ? undefined
-            : isDarkMode
-            ? applyDarkModeFilter(element.backgroundColor)
-            : element.backgroundColor;
+        if (shouldRenderBackgroundGradient(element)) {
+          options.fill = undefined;
+        } else {
+          options.fill =
+            element.backgroundColor === "transparent"
+              ? undefined
+              : isDarkMode
+              ? applyDarkModeFilter(element.backgroundColor)
+              : element.backgroundColor;
+        }
       }
       return options;
     }

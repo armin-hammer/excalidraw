@@ -17,6 +17,14 @@ import type {
 
 export type ChartType = "bar" | "line" | "radar";
 export type FillStyle = "hachure" | "cross-hatch" | "solid" | "zigzag";
+
+export type BackgroundGradient = Readonly<{
+  type: "linear" | "radial";
+  /** 2–4 colors */
+  colors: readonly [string, string, ...string[]];
+  /** degrees; linear: gradient axis, radial: focal point direction from center */
+  angle: number;
+}>;
 export type FontFamilyKeys = keyof typeof FONT_FAMILY;
 export type FontFamilyValues = typeof FONT_FAMILY[FontFamilyKeys];
 export type Theme = typeof THEME[keyof typeof THEME];
@@ -43,6 +51,7 @@ type _ExcalidrawElementBase = Readonly<{
   y: number;
   strokeColor: string;
   backgroundColor: string;
+  backgroundGradient: BackgroundGradient | null;
   fillStyle: FillStyle;
   strokeWidth: number;
   strokeStyle: StrokeStyle;

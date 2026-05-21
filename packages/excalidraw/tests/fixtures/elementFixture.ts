@@ -13,6 +13,7 @@ const elementBase: Omit<ExcalidrawElement, "type"> = {
   angle: 0 as Radians,
   strokeColor: "#000000",
   backgroundColor: "#15aabf",
+  backgroundGradient: null,
   fillStyle: "hachure",
   strokeWidth: 1,
   strokeStyle: "solid",

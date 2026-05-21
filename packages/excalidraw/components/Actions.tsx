@@ -14,6 +14,7 @@ import {
   suppportsHorizontalAlign,
   hasBoundTextElement,
   isElbowArrow,
+  isElementFilled,
   isImageElement,
   isLinearElement,
   isTextElement,
@@ -161,12 +162,15 @@ export const SelectedShapeActions = ({
   const editorInterface = useEditorInterface();
   const isRTL = document.documentElement.getAttribute("dir") === "rtl";
 
+  const hasActiveToolFill =
+    hasBackground(appState.activeTool.type) &&
+    (appState.currentItemBackgroundGradient != null ||
+      !isTransparent(appState.currentItemBackgroundColor));
+
   const showFillIcons =
-    (hasBackground(appState.activeTool.type) &&
-      !isTransparent(appState.currentItemBackgroundColor)) ||
+    hasActiveToolFill ||
     targetElements.some(
-      (element) =>
-        hasBackground(element.type) && !isTransparent(element.backgroundColor),
+      (element) => hasBackground(element.type) && isElementFilled(element),
     );
 
   const showLinkIcon =
@@ -328,12 +332,15 @@ const CombinedShapeProperties = ({
   setAppState: React.Component<any, AppState>["setState"];
   container: HTMLDivElement | null;
 }) => {
+  const hasActiveToolFill =
+    hasBackground(appState.activeTool.type) &&
+    (appState.currentItemBackgroundGradient != null ||
+      !isTransparent(appState.currentItemBackgroundColor));
+
   const showFillIcons =
-    (hasBackground(appState.activeTool.type) &&
-      !isTransparent(appState.currentItemBackgroundColor)) ||
+    hasActiveToolFill ||
     targetElements.some(
-      (element) =>
-        hasBackground(element.type) && !isTransparent(element.backgroundColor),
+      (element) => hasBackground(element.type) && isElementFilled(element),
     );
 
   const shouldShowCombinedProperties =

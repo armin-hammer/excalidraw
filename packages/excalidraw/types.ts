@@ -361,6 +361,7 @@ export interface AppState {
   exportScale: number;
   currentItemStrokeColor: string;
   currentItemBackgroundColor: string;
+  currentItemBackgroundGradient: ExcalidrawElement["backgroundGradient"];
   currentItemFillStyle: ExcalidrawElement["fillStyle"];
   currentItemStrokeWidth: number;
   currentItemStrokeStyle: ExcalidrawElement["strokeStyle"];

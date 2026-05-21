@@ -25,7 +25,11 @@ import {
   FONT_SIZES,
 } from "@excalidraw/common";
 
-import { canBecomePolygon, getNonDeletedElements } from "@excalidraw/element";
+import {
+  canBecomePolygon,
+  getNonDeletedElements,
+  normalizeBackgroundGradient,
+} from "@excalidraw/element";
 
 import {
   bindBindingElement,
@@ -376,13 +380,91 @@ export const actionChangeStrokeColor = register<
 });
 
 export const actionChangeBackgroundColor = register<
-  Pick<AppState, "currentItemBackgroundColor" | "viewBackgroundColor">
+  Pick<
+    AppState,
+    | "currentItemBackgroundColor"
+    | "currentItemBackgroundGradient"
+    | "viewBackgroundColor"
+  >
 >({
   name: "changeBackgroundColor",
   label: "labels.changeBackground",
   trackEvent: false,
   perform: (elements, appState, value, app) => {
-    if (!value?.currentItemBackgroundColor) {
+    if (!value) {
+      return {
+        appState: { ...appState },
+        captureUpdate: CaptureUpdateAction.EVENTUALLY,
+      };
+    }
+
+    if (value.currentItemBackgroundGradient !== undefined) {
+      if (value.currentItemBackgroundGradient === null) {
+        return {
+          elements: changeProperty(elements, appState, (el) =>
+            newElementWith(el, { backgroundGradient: null }),
+          ),
+          appState: {
+            ...appState,
+            currentItemBackgroundGradient: null,
+          },
+          captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+        };
+      }
+
+      const gradient = normalizeBackgroundGradient(
+        value.currentItemBackgroundGradient,
+      );
+      if (!gradient) {
+        return {
+          appState: { ...appState, ...value },
+          captureUpdate: CaptureUpdateAction.EVENTUALLY,
+        };
+      }
+
+      const selectedElements = app.scene.getSelectedElements(appState);
+      const shouldEnablePolygon = selectedElements.every(
+        (el) => isLineElement(el) && canBecomePolygon(el.points),
+      );
+      const firstColor = gradient.colors[0];
+      let nextElements;
+
+      if (shouldEnablePolygon) {
+        const selectedElementsMap = arrayToMap(selectedElements);
+        nextElements = elements.map((el) => {
+          if (selectedElementsMap.has(el.id) && isLineElement(el)) {
+            return newElementWith(el, {
+              backgroundColor: firstColor,
+              backgroundGradient: gradient,
+              fillStyle: "solid",
+              ...toggleLinePolygonState(el, true),
+            });
+          }
+          return el;
+        });
+      } else {
+        nextElements = changeProperty(elements, appState, (el) =>
+          newElementWith(el, {
+            backgroundColor: firstColor,
+            backgroundGradient: gradient,
+            fillStyle: "solid",
+          }),
+        );
+      }
+
+      return {
+        elements: nextElements,
+        appState: {
+          ...appState,
+          currentItemBackgroundGradient: gradient,
+          currentItemBackgroundColor: firstColor,
+          currentItemFillStyle: "solid",
+        },
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+      };
+    }
+
+    if (!value.currentItemBackgroundColor) {
       return {
         appState: {
           ...appState,
@@ -407,6 +489,7 @@ export const actionChangeBackgroundColor = register<
         if (selectedElementsMap.has(el.id) && isLineElement(el)) {
           return newElementWith(el, {
             backgroundColor: value.currentItemBackgroundColor,
+            backgroundGradient: null,
             ...toggleLinePolygonState(el, true),
           });
         }
@@ -416,6 +499,7 @@ export const actionChangeBackgroundColor = register<
       nextElements = changeProperty(elements, appState, (el) =>
         newElementWith(el, {
           backgroundColor: value.currentItemBackgroundColor,
+          backgroundGradient: null,
         }),
       );
     }
@@ -425,6 +509,7 @@ export const actionChangeBackgroundColor = register<
       appState: {
         ...appState,
         ...value,
+        currentItemBackgroundGradient: null,
       },
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
@@ -453,6 +538,26 @@ export const actionChangeBackgroundColor = register<
           onChange={(color) =>
             updateData({ currentItemBackgroundColor: color })
           }
+          gradient={(() => {
+            const serialized = getFormValue(
+              elements,
+              app,
+              (element) => JSON.stringify(element.backgroundGradient ?? null),
+              true,
+              (hasSelection) =>
+                JSON.stringify(
+                  !hasSelection
+                    ? appState.currentItemBackgroundGradient ?? null
+                    : null,
+                ),
+            );
+            return serialized
+              ? (JSON.parse(serialized) as ExcalidrawElement["backgroundGradient"])
+              : null;
+          })()}
+          onGradientChange={(gradient) =>
+            updateData({ currentItemBackgroundGradient: gradient })
+          }
           elements={elements}
           appState={appState}
           updateData={updateData}
@@ -478,9 +583,14 @@ export const actionChangeFillStyle = register<ExcalidrawElement["fillStyle"]>({
       elements: changeProperty(elements, appState, (el) =>
         newElementWith(el, {
           fillStyle: value,
+          ...(value !== "solid" ? { backgroundGradient: null } : {}),
         }),
       ),
-      appState: { ...appState, currentItemFillStyle: value },
+      appState: {
+        ...appState,
+        currentItemFillStyle: value,
+        ...(value !== "solid" ? { currentItemBackgroundGradient: null } : {}),
+      },
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   },

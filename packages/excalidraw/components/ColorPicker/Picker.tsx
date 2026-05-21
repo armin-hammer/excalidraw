@@ -8,6 +8,11 @@ import {
   KEYS,
 } from "@excalidraw/common";
 
+import {
+  updateGradientStopColor,
+} from "./GradientPicker";
+
+import type { BackgroundGradient } from "@excalidraw/element/types";
 import type { ExcalidrawElement } from "@excalidraw/element/types";
 
 import type { ColorPaletteCustom } from "@excalidraw/common";
@@ -16,6 +21,7 @@ import { useAtom } from "../../editor-jotai";
 import { t } from "../../i18n";
 
 import { CustomColorList } from "./CustomColorList";
+import { GradientPicker } from "./GradientPicker";
 import PickerColorList from "./PickerColorList";
 import PickerHeading from "./PickerHeading";
 import { ShadeList } from "./ShadeList";
@@ -32,6 +38,8 @@ import type { ColorPickerType } from "./colorPickerUtils";
 interface PickerProps {
   color: string | null;
   onChange: (color: string) => void;
+  gradient?: BackgroundGradient | null;
+  onGradientChange?: (gradient: BackgroundGradient | null) => void;
   type: ColorPickerType;
   elements: readonly ExcalidrawElement[];
   palette: ColorPaletteCustom;
@@ -48,6 +56,8 @@ export const Picker = React.forwardRef(
     {
       color,
       onChange,
+      gradient = null,
+      onGradientChange,
       type,
       elements,
       palette,
@@ -115,6 +125,26 @@ export const Picker = React.forwardRef(
           : DEFAULT_ELEMENT_STROKE_COLOR_INDEX),
     );
 
+    const [activeGradientStopIndex, setActiveGradientStopIndex] = useState(0);
+
+    const handlePaletteColorChange = (newColor: string) => {
+      if (type === "elementBackground" && gradient && onGradientChange) {
+        onGradientChange(
+          updateGradientStopColor(gradient, activeGradientStopIndex, newColor),
+        );
+        if (activeGradientStopIndex === 0) {
+          onChange(newColor);
+        }
+        return;
+      }
+      onChange(newColor);
+    };
+
+    const displayColor =
+      gradient && type === "elementBackground"
+        ? gradient.colors[activeGradientStopIndex] ?? color
+        : color;
+
     useEffect(() => {
       if (colorObj?.shade != null) {
         setActiveShade(colorObj.shade);
@@ -148,7 +178,7 @@ export const Picker = React.forwardRef(
               activeColorPickerSection,
               palette,
               color,
-              onChange,
+              onChange: handlePaletteColorChange,
               onEyeDropperToggle,
               customColors,
               setActiveColorPickerSection,
@@ -168,6 +198,17 @@ export const Picker = React.forwardRef(
         >
           {title && <div className="color-picker__title">{title}</div>}
 
+          {type === "elementBackground" && onGradientChange && (
+            <GradientPicker
+              color={color}
+              gradient={gradient}
+              activeStopIndex={activeGradientStopIndex}
+              onActiveStopIndexChange={setActiveGradientStopIndex}
+              onColorChange={onChange}
+              onGradientChange={onGradientChange}
+            />
+          )}
+
           {!!customColors.length && (
             <div>
               <PickerHeading>
@@ -177,7 +218,7 @@ export const Picker = React.forwardRef(
                 colors={customColors}
                 color={color}
                 label={t("colorPicker.mostUsedCustomColors")}
-                onChange={onChange}
+                onChange={handlePaletteColorChange}
               />
             </div>
           )}
@@ -185,9 +226,9 @@ export const Picker = React.forwardRef(
           <div>
             <PickerHeading>{t("colorPicker.colors")}</PickerHeading>
             <PickerColorList
-              color={color}
+              color={displayColor}
               palette={palette}
-              onChange={onChange}
+              onChange={handlePaletteColorChange}
               activeShade={activeShade}
               showHotKey={showHotKey}
             />
@@ -196,8 +237,8 @@ export const Picker = React.forwardRef(
           <div>
             <PickerHeading>{t("colorPicker.shades")}</PickerHeading>
             <ShadeList
-              color={color}
-              onChange={onChange}
+              color={displayColor}
+              onChange={handlePaletteColorChange}
               palette={palette}
               showHotKey={showHotKey}
             />

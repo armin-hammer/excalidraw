@@ -58,6 +58,23 @@ describe("element locking", () => {
       expect(solidFillStyle).toHaveClass("active");
     });
 
+    it("should show fill style when background gradient is set", () => {
+      UI.clickTool("rectangle");
+
+      API.setAppState({
+        currentItemBackgroundGradient: {
+          type: "linear",
+          colors: ["#ff0000", "#0000ff"],
+          angle: 0,
+        },
+        currentItemBackgroundColor: "#ff0000",
+        currentItemFillStyle: "solid",
+      });
+
+      const solidFillStyle = queryByTestId(document.body, `fill-solid`);
+      expect(solidFillStyle).toHaveClass("active");
+    });
+
     it("should not show fill style when background transparent", () => {
       UI.clickTool("rectangle");
 

@@ -73,6 +73,7 @@ export * from "./flowchart";
 export * from "./arrows/focus";
 export * from "./fractionalIndex";
 export * from "./frame";
+export * from "./gradient";
 export * from "./groups";
 export * from "./heading";
 export * from "./image";

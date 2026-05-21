@@ -34,6 +34,7 @@ import {
 } from "@excalidraw/element";
 import { LinearElementEditor } from "@excalidraw/element";
 import { bumpVersion } from "@excalidraw/element";
+import { normalizeBackgroundGradient } from "@excalidraw/element";
 import { getContainerElement } from "@excalidraw/element";
 import { detectLineHeight } from "@excalidraw/element";
 import {
@@ -364,6 +365,7 @@ const restoreElementWithProperties = <
     strokeColor: element.strokeColor || DEFAULT_ELEMENT_PROPS.strokeColor,
     backgroundColor:
       element.backgroundColor || DEFAULT_ELEMENT_PROPS.backgroundColor,
+    backgroundGradient: null,
     width: element.width || 0,
     height: element.height || 0,
     seed: element.seed ?? 1,
@@ -393,6 +395,10 @@ const restoreElementWithProperties = <
       "customData" in extra ? extra.customData : element.customData;
   }
 
+  const normalizedBackgroundGradient = normalizeBackgroundGradient(
+    (element as ExcalidrawElement).backgroundGradient,
+  );
+
   const ret = {
     // spread the original element properties to not lose unknown ones
     // for forward-compatibility
@@ -401,6 +407,8 @@ const restoreElementWithProperties = <
     ...base,
     ...getNormalizedDimensions(base),
     ...extra,
+    // override `undefined` from legacy elements (optional field)
+    backgroundGradient: normalizedBackgroundGradient,
   } as unknown as T;
 
   // strip legacy props (migrated in previous steps)

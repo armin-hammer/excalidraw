@@ -1,0 +1,426 @@
+import { simplify } from "points-on-curve";
+
+import {
+  applyDarkModeFilter,
+  isTransparent,
+  normalizeInputColor,
+  SVG_NS,
+} from "@excalidraw/common";
+import { degreesToRadians } from "@excalidraw/math";
+
+import type { Mutable } from "@excalidraw/common/utility-types";
+import type { LocalPoint } from "@excalidraw/math";
+
+import { getDiamondPoints } from "./bounds";
+import { hasBackground } from "./comparisons";
+import { getCornerRadius, isPathALoop } from "./utils";
+
+import type {
+  BackgroundGradient,
+  ExcalidrawElement,
+  NonDeletedExcalidrawElement,
+} from "./types";
+
+export const MAX_GRADIENT_STOPS = 4;
+export const MIN_GRADIENT_STOPS = 2;
+
+export const hasBackgroundGradient = (
+  element: ExcalidrawElement,
+): element is ExcalidrawElement & {
+  backgroundGradient: BackgroundGradient;
+} => {
+  const gradient = element.backgroundGradient;
+  return (
+    gradient != null &&
+    gradient.type === "linear" &&
+    gradient.colors.length >= MIN_GRADIENT_STOPS
+  );
+};
+
+export const isElementFilled = (element: ExcalidrawElement): boolean => {
+  if (hasBackgroundGradient(element)) {
+    if (!hasBackground(element.type)) {
+      return false;
+    }
+    if (
+      (element.type === "line" || element.type === "freedraw") &&
+      !isPathALoop(element.points)
+    ) {
+      return false;
+    }
+    return true;
+  }
+  return !isTransparent(element.backgroundColor);
+};
+
+export const normalizeBackgroundGradient = (
+  raw: unknown,
+): BackgroundGradient | null => {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const gradient = raw as Partial<BackgroundGradient>;
+  if (gradient.type !== "linear" || !Array.isArray(gradient.colors)) {
+    return null;
+  }
+
+  const colors = gradient.colors
+    .slice(0, MAX_GRADIENT_STOPS)
+    .map((c) => (typeof c === "string" ? normalizeInputColor(c) : null))
+    .filter((c): c is string => c != null && !isTransparent(c));
+
+  if (colors.length < MIN_GRADIENT_STOPS) {
+    return null;
+  }
+
+  const angle =
+    typeof gradient.angle === "number" && !Number.isNaN(gradient.angle)
+      ? ((gradient.angle % 360) + 360) % 360
+      : 0;
+
+  return {
+    type: "linear",
+    colors: colors as unknown as BackgroundGradient["colors"],
+    angle,
+  };
+};
+
+export const getGradientPreviewCss = (
+  gradient: BackgroundGradient,
+): string => {
+  const stops = gradient.colors.join(", ");
+  return `linear-gradient(${gradient.angle}deg, ${stops})`;
+};
+
+export const getGradientColorsForRender = (
+  gradient: BackgroundGradient,
+  isDarkMode: boolean,
+): string[] => {
+  return gradient.colors.map((color) =>
+    isDarkMode ? applyDarkModeFilter(color) : color,
+  );
+};
+
+/** Gradient line endpoints in element-local coordinates (0,0 top-left). */
+export const getLinearGradientEndpoints = (
+  width: number,
+  height: number,
+  angleDeg: number,
+): { x0: number; y0: number; x1: number; y1: number } => {
+  const cx = width / 2;
+  const cy = height / 2;
+  const angleRad = degreesToRadians(angleDeg as import("@excalidraw/math").Degrees);
+  const dx = Math.cos(angleRad);
+  const dy = Math.sin(angleRad);
+
+  const halfDiagonal =
+    Math.abs(width * dx) / 2 + Math.abs(height * dy) / 2;
+
+  return {
+    x0: cx - dx * halfDiagonal,
+    y0: cy - dy * halfDiagonal,
+    x1: cx + dx * halfDiagonal,
+    y1: cy + dy * halfDiagonal,
+  };
+};
+
+export const getDefaultBackgroundGradient = (
+  firstColor: string,
+  secondColor?: string,
+): BackgroundGradient => ({
+  type: "linear",
+  colors: [firstColor, secondColor ?? "#a5d8ff"] as unknown as BackgroundGradient["colors"],
+  angle: 0,
+});
+
+export const shouldRenderBackgroundGradient = (
+  element: ExcalidrawElement,
+): boolean => {
+  if (!hasBackgroundGradient(element)) {
+    return false;
+  }
+  if (!hasBackground(element.type)) {
+    return false;
+  }
+  if (element.type === "line" || element.type === "freedraw") {
+    return isPathALoop(element.points);
+  }
+  return true;
+};
+
+const clipElementShape = (
+  context: CanvasRenderingContext2D,
+  element: NonDeletedExcalidrawElement,
+) => {
+  context.beginPath();
+
+  switch (element.type) {
+    case "rectangle":
+    case "iframe":
+    case "embeddable": {
+      const radius = getCornerRadius(
+        Math.min(element.width, element.height),
+        element,
+      );
+      if (element.roundness && context.roundRect && radius > 0) {
+        context.roundRect(0, 0, element.width, element.height, radius);
+      } else {
+        context.rect(0, 0, element.width, element.height);
+      }
+      break;
+    }
+    case "ellipse": {
+      context.ellipse(
+        element.width / 2,
+        element.height / 2,
+        element.width / 2,
+        element.height / 2,
+        0,
+        0,
+        Math.PI * 2,
+      );
+      break;
+    }
+    case "diamond": {
+      const [topX, topY, rightX, rightY, bottomX, bottomY, leftX, leftY] =
+        getDiamondPoints(element);
+      context.moveTo(topX, topY);
+      context.lineTo(rightX, rightY);
+      context.lineTo(bottomX, bottomY);
+      context.lineTo(leftX, leftY);
+      context.closePath();
+      break;
+    }
+    case "line": {
+      const points = element.points.length
+        ? element.points
+        : ([[0, 0]] as LocalPoint[]);
+      context.moveTo(points[0][0], points[0][1]);
+      for (let i = 1; i < points.length; i++) {
+        context.lineTo(points[i][0], points[i][1]);
+      }
+      context.closePath();
+      break;
+    }
+    case "freedraw": {
+      const simplifiedPoints = simplify(
+        element.points as Mutable<LocalPoint[]>,
+        0.75,
+      );
+      if (simplifiedPoints.length) {
+        context.moveTo(simplifiedPoints[0][0], simplifiedPoints[0][1]);
+        for (let i = 1; i < simplifiedPoints.length; i++) {
+          context.lineTo(simplifiedPoints[i][0], simplifiedPoints[i][1]);
+        }
+        context.closePath();
+      }
+      break;
+    }
+    default:
+      context.rect(0, 0, element.width, element.height);
+  }
+};
+
+export const drawBackgroundGradientFill = (
+  context: CanvasRenderingContext2D,
+  element: NonDeletedExcalidrawElement,
+  isDarkMode: boolean,
+  opacity: number = 1,
+) => {
+  if (!shouldRenderBackgroundGradient(element) || !element.backgroundGradient) {
+    return;
+  }
+
+  const gradient = element.backgroundGradient;
+  const { x0, y0, x1, y1 } = getLinearGradientEndpoints(
+    element.width,
+    element.height,
+    gradient.angle,
+  );
+  const canvasGradient = context.createLinearGradient(x0, y0, x1, y1);
+  const colors = getGradientColorsForRender(gradient, isDarkMode);
+  const step = colors.length > 1 ? 1 / (colors.length - 1) : 1;
+
+  colors.forEach((color, index) => {
+    canvasGradient.addColorStop(index * step, color);
+  });
+
+  context.save();
+  clipElementShape(context, element);
+  context.clip();
+  context.globalAlpha = opacity;
+  context.fillStyle = canvasGradient;
+  context.fill("evenodd");
+  context.restore();
+};
+
+export const ensureSvgGradientDef = (
+  svgRoot: SVGElement,
+  elementId: string,
+  gradient: BackgroundGradient,
+  width: number,
+  height: number,
+  isDarkMode: boolean,
+): string => {
+  const doc = svgRoot.ownerDocument!;
+  let defs = svgRoot.querySelector("defs");
+  if (!defs) {
+    defs = doc.createElementNS(SVG_NS, "defs");
+    svgRoot.prepend(defs);
+  }
+
+  const id = `element-fill-gradient-${elementId}`;
+  defs.querySelector(`#${id}`)?.remove();
+
+  const { x0, y0, x1, y1 } = getLinearGradientEndpoints(
+    width,
+    height,
+    gradient.angle,
+  );
+  const linearGradient = doc.createElementNS(SVG_NS, "linearGradient");
+  linearGradient.setAttribute("id", id);
+  linearGradient.setAttribute("gradientUnits", "userSpaceOnUse");
+  linearGradient.setAttribute("x1", `${x0}`);
+  linearGradient.setAttribute("y1", `${y0}`);
+  linearGradient.setAttribute("x2", `${x1}`);
+  linearGradient.setAttribute("y2", `${y1}`);
+
+  const colors = getGradientColorsForRender(gradient, isDarkMode);
+  const step = colors.length > 1 ? 1 / (colors.length - 1) : 1;
+  colors.forEach((color, index) => {
+    const stop = doc.createElementNS(SVG_NS, "stop");
+    stop.setAttribute("offset", `${index * step}`);
+    stop.setAttribute("stop-color", color);
+    linearGradient.appendChild(stop);
+  });
+
+  defs.appendChild(linearGradient);
+  return id;
+};
+
+export const createSvgGradientFillShape = (
+  doc: Document,
+  element: NonDeletedExcalidrawElement,
+  gradientUrl: string,
+): SVGElement | null => {
+  if (!shouldRenderBackgroundGradient(element)) {
+    return null;
+  }
+
+  switch (element.type) {
+    case "rectangle":
+    case "iframe":
+    case "embeddable": {
+      const rect = doc.createElementNS(SVG_NS, "rect");
+      rect.setAttribute("width", `${element.width}`);
+      rect.setAttribute("height", `${element.height}`);
+      const radius = getCornerRadius(
+        Math.min(element.width, element.height),
+        element,
+      );
+      if (element.roundness && radius > 0) {
+        rect.setAttribute("rx", `${radius}`);
+        rect.setAttribute("ry", `${radius}`);
+      }
+      rect.setAttribute("fill", gradientUrl);
+      rect.setAttribute("stroke", "none");
+      return rect;
+    }
+    case "ellipse": {
+      const ellipse = doc.createElementNS(SVG_NS, "ellipse");
+      ellipse.setAttribute("cx", `${element.width / 2}`);
+      ellipse.setAttribute("cy", `${element.height / 2}`);
+      ellipse.setAttribute("rx", `${element.width / 2}`);
+      ellipse.setAttribute("ry", `${element.height / 2}`);
+      ellipse.setAttribute("fill", gradientUrl);
+      ellipse.setAttribute("stroke", "none");
+      return ellipse;
+    }
+    case "diamond": {
+      const [topX, topY, rightX, rightY, bottomX, bottomY, leftX, leftY] =
+        getDiamondPoints(element);
+      const polygon = doc.createElementNS(SVG_NS, "polygon");
+      polygon.setAttribute(
+        "points",
+        `${topX},${topY} ${rightX},${rightY} ${bottomX},${bottomY} ${leftX},${leftY}`,
+      );
+      polygon.setAttribute("fill", gradientUrl);
+      polygon.setAttribute("stroke", "none");
+      return polygon;
+    }
+    case "line": {
+      const points = element.points.length
+        ? element.points
+        : ([[0, 0]] as LocalPoint[]);
+      const polygon = doc.createElementNS(SVG_NS, "polygon");
+      polygon.setAttribute(
+        "points",
+        points.map((p) => `${p[0]},${p[1]}`).join(" "),
+      );
+      polygon.setAttribute("fill", gradientUrl);
+      polygon.setAttribute("stroke", "none");
+      return polygon;
+    }
+    case "freedraw": {
+      const simplifiedPoints = simplify(
+        element.points as Mutable<LocalPoint[]>,
+        0.75,
+      );
+      if (!simplifiedPoints.length) {
+        return null;
+      }
+      const path = doc.createElementNS(SVG_NS, "path");
+      const d =
+        `M ${simplifiedPoints[0][0]} ${simplifiedPoints[0][1]} ` +
+        simplifiedPoints
+          .slice(1)
+          .map((p) => `L ${p[0]} ${p[1]}`)
+          .join(" ") +
+        " Z";
+      path.setAttribute("d", d);
+      path.setAttribute("fill", gradientUrl);
+      path.setAttribute("stroke", "none");
+      return path;
+    }
+    default:
+      return null;
+  }
+};
+
+export const renderSvgBackgroundGradientFill = (
+  svgRoot: SVGElement,
+  element: NonDeletedExcalidrawElement,
+  transform: string | null,
+  fillOpacity: number,
+  isDarkMode: boolean,
+): SVGElement | null => {
+  if (!shouldRenderBackgroundGradient(element) || !element.backgroundGradient) {
+    return null;
+  }
+
+  const gradientId = ensureSvgGradientDef(
+    svgRoot,
+    element.id,
+    element.backgroundGradient,
+    element.width,
+    element.height,
+    isDarkMode,
+  );
+  const doc = svgRoot.ownerDocument!;
+  const fillNode = createSvgGradientFillShape(
+    doc,
+    element,
+    `url(#${gradientId})`,
+  );
+  if (!fillNode) {
+    return null;
+  }
+
+  if (transform) {
+    fillNode.setAttribute("transform", transform);
+  }
+  if (fillOpacity !== 1) {
+    fillNode.setAttribute("fill-opacity", `${fillOpacity}`);
+  }
+  return fillNode;
+};

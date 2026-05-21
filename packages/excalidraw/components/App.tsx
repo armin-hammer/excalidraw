@@ -444,6 +444,7 @@ import BraveMeasureTextError from "./BraveMeasureTextError";
 import { ContextMenu, CONTEXT_MENU_SEPARATOR } from "./ContextMenu";
 import { activeEyeDropperAtom } from "./EyeDropper";
 import FollowMode from "./FollowMode/FollowMode";
+import { GradientCanvasEditor } from "./GradientCanvasEditor";
 import LayerUI from "./LayerUI";
 import { ElementCanvasButton } from "./MagicButton";
 import { SVGLayer } from "./SVGLayer";
@@ -2409,6 +2410,11 @@ class App extends React.Component<AppProps, AppState> {
                             onTouchMove={this.handleTouchMove}
                             onPointerDown={this.handleCanvasPointerDown}
                             onDoubleClick={this.handleCanvasDoubleClick}
+                          />
+                          <GradientCanvasEditor
+                            app={this}
+                            appState={this.state}
+                            selectedElements={selectedElements}
                           />
                           {this.state.userToFollow && (
                             <FollowMode

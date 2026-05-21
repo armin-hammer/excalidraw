@@ -18,12 +18,27 @@ import type {
 export type ChartType = "bar" | "line" | "radar";
 export type FillStyle = "hachure" | "cross-hatch" | "solid" | "zigzag";
 
+/** Normalized 2D point: each coordinate is a fraction of the element's bounds (0–1). */
+export type GradientNormalizedPoint = Readonly<{ x: number; y: number }>;
+
 export type BackgroundGradient = Readonly<{
   type: "linear" | "radial";
   /** 2–4 colors */
   colors: readonly [string, string, ...string[]];
-  /** degrees; linear: gradient axis, radial: focal point direction from center */
+  /** degrees; linear: gradient axis, radial: focal point direction from center.
+      Kept for backward compatibility & as fallback when explicit geometry is absent. */
   angle: number;
+  /** Linear gradient start point in normalized element-local coords (0–1).
+      When set together with `end`, overrides `angle`. */
+  start?: GradientNormalizedPoint;
+  /** Linear gradient end point in normalized element-local coords (0–1). */
+  end?: GradientNormalizedPoint;
+  /** Radial gradient center in normalized element-local coords (0–1).
+      Defaults to {x: 0.5, y: 0.5}. */
+  center?: GradientNormalizedPoint;
+  /** Radial gradient radius as a fraction of half the element diagonal (0–2).
+      Defaults to 1. */
+  radius?: number;
 }>;
 export type FontFamilyKeys = keyof typeof FONT_FAMILY;
 export type FontFamilyValues = typeof FONT_FAMILY[FontFamilyKeys];

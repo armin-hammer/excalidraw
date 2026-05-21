@@ -53,6 +53,35 @@ export const isElementFilled = (element: ExcalidrawElement): boolean => {
   return !isTransparent(element.backgroundColor);
 };
 
+const normalizeFraction = (
+  value: unknown,
+  fallback: number,
+  min = -10,
+  max = 10,
+): number => {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return fallback;
+  }
+  return Math.min(Math.max(value, min), max);
+};
+
+const normalizePoint = (raw: unknown): { x: number; y: number } | undefined => {
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+  const p = raw as { x?: unknown; y?: unknown };
+  if (typeof p.x !== "number" || typeof p.y !== "number") {
+    return undefined;
+  }
+  if (Number.isNaN(p.x) || Number.isNaN(p.y)) {
+    return undefined;
+  }
+  return {
+    x: normalizeFraction(p.x, 0.5),
+    y: normalizeFraction(p.y, 0.5),
+  };
+};
+
 export const normalizeBackgroundGradient = (
   raw: unknown,
 ): BackgroundGradient | null => {
@@ -81,10 +110,22 @@ export const normalizeBackgroundGradient = (
       ? ((gradient.angle % 360) + 360) % 360
       : 0;
 
+  const start = normalizePoint(gradient.start);
+  const end = normalizePoint(gradient.end);
+  const center = normalizePoint(gradient.center);
+  const radius =
+    typeof gradient.radius === "number" && !Number.isNaN(gradient.radius)
+      ? Math.max(0.01, Math.min(gradient.radius, 4))
+      : undefined;
+
   return {
     type: gradient.type,
     colors: colors as unknown as BackgroundGradient["colors"],
     angle,
+    ...(start ? { start } : {}),
+    ...(end ? { end } : {}),
+    ...(center ? { center } : {}),
+    ...(radius != null ? { radius } : {}),
   };
 };
 
@@ -128,12 +169,31 @@ export const getGradientColorsForRender = (
   );
 };
 
-/** Gradient line endpoints in element-local coordinates (0,0 top-left). */
+/** Gradient line endpoints in element-local coordinates (0,0 top-left).
+ *  Accepts either a `BackgroundGradient` (preferred — uses explicit `start`/`end`
+ *  if present), or a numeric `angleDeg` for backward compatibility. */
 export const getLinearGradientEndpoints = (
   width: number,
   height: number,
-  angleDeg: number,
+  gradientOrAngle: BackgroundGradient | number,
 ): { x0: number; y0: number; x1: number; y1: number } => {
+  if (
+    typeof gradientOrAngle !== "number" &&
+    gradientOrAngle.start &&
+    gradientOrAngle.end
+  ) {
+    const { start, end } = gradientOrAngle;
+    return {
+      x0: start.x * width,
+      y0: start.y * height,
+      x1: end.x * width,
+      y1: end.y * height,
+    };
+  }
+  const angleDeg =
+    typeof gradientOrAngle === "number"
+      ? gradientOrAngle
+      : gradientOrAngle.angle;
   const cx = width / 2;
   const cy = height / 2;
   const angleRad = degreesToRadians(
@@ -152,11 +212,13 @@ export const getLinearGradientEndpoints = (
   };
 };
 
-/** Radial gradient circle params in element-local coordinates. */
+/** Radial gradient circle params in element-local coordinates.
+ *  Accepts either a `BackgroundGradient` (preferred — uses explicit `center`/`radius`
+ *  if present), or a numeric `angleDeg` for backward compatibility. */
 export const getRadialGradientCircleParams = (
   width: number,
   height: number,
-  angleDeg: number,
+  gradientOrAngle: BackgroundGradient | number,
 ): {
   fx: number;
   fy: number;
@@ -165,6 +227,28 @@ export const getRadialGradientCircleParams = (
   cy: number;
   r: number;
 } => {
+  if (
+    typeof gradientOrAngle !== "number" &&
+    (gradientOrAngle.center || gradientOrAngle.radius != null)
+  ) {
+    const center = gradientOrAngle.center ?? { x: 0.5, y: 0.5 };
+    const halfDiagonal = Math.hypot(width, height) / 2;
+    const radius = (gradientOrAngle.radius ?? 1) * halfDiagonal;
+    const cx = center.x * width;
+    const cy = center.y * height;
+    return {
+      fx: cx,
+      fy: cy,
+      fr: 0,
+      cx,
+      cy,
+      r: Math.max(radius, 0.0001),
+    };
+  }
+  const angleDeg =
+    typeof gradientOrAngle === "number"
+      ? gradientOrAngle
+      : gradientOrAngle.angle;
   const cx = width / 2;
   const cy = height / 2;
   const angleRad = degreesToRadians(
@@ -199,14 +283,28 @@ export const getDefaultBackgroundGradient = (
   firstColor: string,
   secondColor?: string,
   type: BackgroundGradient["type"] = "radial",
-): BackgroundGradient => ({
-  type,
-  colors: [
-    firstColor,
-    secondColor ?? "#a5d8ff",
-  ] as unknown as BackgroundGradient["colors"],
-  angle: 0,
-});
+): BackgroundGradient => {
+  const base = {
+    type,
+    colors: [
+      firstColor,
+      secondColor ?? "#a5d8ff",
+    ] as unknown as BackgroundGradient["colors"],
+    angle: 0,
+  };
+  if (type === "linear") {
+    return {
+      ...base,
+      start: { x: 0, y: 0.5 },
+      end: { x: 1, y: 0.5 },
+    };
+  }
+  return {
+    ...base,
+    center: { x: 0.5, y: 0.5 },
+    radius: 1,
+  };
+};
 
 export const shouldRenderBackgroundGradient = (
   element: ExcalidrawElement,
@@ -313,7 +411,7 @@ export const drawBackgroundGradientFill = (
           const { fx, fy, fr, cx, cy, r } = getRadialGradientCircleParams(
             element.width,
             element.height,
-            gradient.angle,
+            gradient,
           );
           return context.createRadialGradient(fx, fy, fr, cx, cy, r);
         })()
@@ -321,7 +419,7 @@ export const drawBackgroundGradientFill = (
           const { x0, y0, x1, y1 } = getLinearGradientEndpoints(
             element.width,
             element.height,
-            gradient.angle,
+            gradient,
           );
           return context.createLinearGradient(x0, y0, x1, y1);
         })();
@@ -366,7 +464,7 @@ export const ensureSvgGradientDef = (
     const { fx, fy, fr, cx, cy, r } = getRadialGradientCircleParams(
       width,
       height,
-      gradient.angle,
+      gradient,
     );
     const radialGradient = doc.createElementNS(SVG_NS, "radialGradient");
     radialGradient.setAttribute("id", id);
@@ -390,7 +488,7 @@ export const ensureSvgGradientDef = (
   const { x0, y0, x1, y1 } = getLinearGradientEndpoints(
     width,
     height,
-    gradient.angle,
+    gradient,
   );
   const linearGradient = doc.createElementNS(SVG_NS, "linearGradient");
   linearGradient.setAttribute("id", id);

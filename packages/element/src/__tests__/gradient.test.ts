@@ -142,4 +142,56 @@ describe("gradient utils", () => {
     expect(at0.fx).not.toBeCloseTo(at90.fx, 0);
     expect(at0.fy).not.toBeCloseTo(at90.fy, 0);
   });
+
+  it("getLinearGradientEndpoints respects explicit start/end fractions", () => {
+    const { x0, y0, x1, y1 } = getLinearGradientEndpoints(200, 100, {
+      type: "linear",
+      colors: ["#000", "#fff"],
+      angle: 0,
+      start: { x: 0.25, y: 0.5 },
+      end: { x: 0.75, y: 0.5 },
+    });
+    expect(x0).toBeCloseTo(50, 5);
+    expect(y0).toBeCloseTo(50, 5);
+    expect(x1).toBeCloseTo(150, 5);
+    expect(y1).toBeCloseTo(50, 5);
+  });
+
+  it("getRadialGradientCircleParams respects explicit center/radius fractions", () => {
+    const params = getRadialGradientCircleParams(200, 100, {
+      type: "radial",
+      colors: ["#000", "#fff"],
+      angle: 0,
+      center: { x: 0.25, y: 0.75 },
+      radius: 0.5,
+    });
+    expect(params.cx).toBeCloseTo(50, 5);
+    expect(params.cy).toBeCloseTo(75, 5);
+    // halfDiagonal = sqrt(200^2 + 100^2) / 2 ≈ 111.8 * 0.5 ≈ 55.9
+    expect(params.r).toBeCloseTo(Math.hypot(200, 100) / 2 / 2, 5);
+    expect(params.fx).toBeCloseTo(params.cx, 5);
+    expect(params.fy).toBeCloseTo(params.cy, 5);
+  });
+
+  it("normalizeBackgroundGradient preserves geometry fields", () => {
+    const normalized = normalizeBackgroundGradient({
+      type: "linear",
+      colors: ["#ff0000", "#0000ff"],
+      angle: 45,
+      start: { x: 0.1, y: 0.2 },
+      end: { x: 0.8, y: 0.9 },
+    });
+    expect(normalized?.start).toEqual({ x: 0.1, y: 0.2 });
+    expect(normalized?.end).toEqual({ x: 0.8, y: 0.9 });
+
+    const radial = normalizeBackgroundGradient({
+      type: "radial",
+      colors: ["#ff0000", "#0000ff"],
+      angle: 0,
+      center: { x: 0.3, y: 0.4 },
+      radius: 0.6,
+    });
+    expect(radial?.center).toEqual({ x: 0.3, y: 0.4 });
+    expect(radial?.radius).toBeCloseTo(0.6, 5);
+  });
 });

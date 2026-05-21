@@ -19,10 +19,10 @@ export type ChartType = "bar" | "line" | "radar";
 export type FillStyle = "hachure" | "cross-hatch" | "solid" | "zigzag";
 
 export type BackgroundGradient = Readonly<{
-  type: "linear";
+  type: "linear" | "radial";
   /** 2–4 colors */
   colors: readonly [string, string, ...string[]];
-  /** degrees, 0 = left→right in unrotated element space */
+  /** degrees; linear: gradient axis, radial: focal point direction from center */
   angle: number;
 }>;
 export type FontFamilyKeys = keyof typeof FONT_FAMILY;

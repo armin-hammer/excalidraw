@@ -1,5 +1,4 @@
 import clsx from "clsx";
-import type { CSSProperties } from "react";
 
 import { COLOR_PALETTE } from "@excalidraw/common";
 import {
@@ -17,6 +16,8 @@ import { Range } from "../Range";
 import PickerHeading from "./PickerHeading";
 
 import "./ColorPicker.scss";
+
+import type { CSSProperties } from "react";
 
 type FillMode = "solid" | "gradient";
 
@@ -71,10 +72,12 @@ export const GradientPicker = ({
     if (currentGradient.colors.length >= MAX_GRADIENT_STOPS) {
       return;
     }
-    const lastColor =
-      currentGradient.colors[currentGradient.colors.length - 1];
+    const lastColor = currentGradient.colors[currentGradient.colors.length - 1];
     updateGradient({
-      colors: [...currentGradient.colors, lastColor] as unknown as BackgroundGradient["colors"],
+      colors: [
+        ...currentGradient.colors,
+        lastColor,
+      ] as unknown as BackgroundGradient["colors"],
     });
     onActiveStopIndexChange(currentGradient.colors.length);
   };
@@ -119,10 +122,33 @@ export const GradientPicker = ({
           <div
             className="color-picker__gradient-preview"
             style={
-              { background: getGradientPreviewCss(currentGradient) } as CSSProperties
+              {
+                background: getGradientPreviewCss(currentGradient),
+              } as CSSProperties
             }
             aria-hidden="true"
           />
+          <PickerHeading>{t("colorPicker.gradientType")}</PickerHeading>
+          <div className="color-picker__fill-mode" role="group">
+            <button
+              type="button"
+              className={clsx("color-picker__fill-mode-btn", {
+                active: currentGradient.type === "linear",
+              })}
+              onClick={() => updateGradient({ type: "linear" })}
+            >
+              {t("colorPicker.linearGradient")}
+            </button>
+            <button
+              type="button"
+              className={clsx("color-picker__fill-mode-btn", {
+                active: currentGradient.type === "radial",
+              })}
+              onClick={() => updateGradient({ type: "radial" })}
+            >
+              {t("colorPicker.radialGradient")}
+            </button>
+          </div>
           <PickerHeading>{t("colorPicker.gradientStops")}</PickerHeading>
           <div className="color-picker__gradient-stops">
             {currentGradient.colors.map((stopColor, index) => (
@@ -175,17 +201,4 @@ export const GradientPicker = ({
       )}
     </div>
   );
-};
-
-export const updateGradientStopColor = (
-  gradient: BackgroundGradient,
-  index: number,
-  newColor: string,
-): BackgroundGradient => {
-  const colors = [...gradient.colors] as string[];
-  colors[index] = newColor;
-  return {
-    ...gradient,
-    colors: colors as unknown as BackgroundGradient["colors"],
-  };
 };

@@ -42,7 +42,7 @@ describe("restoreElements", () => {
         colors: ["#ff0000", "#0000ff", "#00ff00"],
         angle: 45,
       },
-    });
+    } as Parameters<typeof API.createElement>[0]);
 
     const [restored] = restore.restoreElements([rectElement], null);
     expect(restored.backgroundGradient).toEqual({

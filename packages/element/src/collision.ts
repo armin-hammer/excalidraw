@@ -1,4 +1,4 @@
-import { invariant, isTransparent, type Bounds } from "@excalidraw/common";
+import { invariant, type Bounds } from "@excalidraw/common";
 import {
   curveIntersectLineSegment,
   isPointWithinBounds,

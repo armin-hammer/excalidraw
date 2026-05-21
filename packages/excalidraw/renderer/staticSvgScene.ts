@@ -417,9 +417,6 @@ const renderElementToSvg = (
     case "freedraw": {
       const wrapper = svgRoot.ownerDocument.createElementNS(SVG_NS, "g");
 
-      const freedrawTransform = `translate(${offsetX || 0} ${
-        offsetY || 0
-      }) rotate(${degree} ${cx} ${cy})`;
       const freedrawGradientFill = renderSvgBackgroundGradientFill(
         svgRoot,
         element,

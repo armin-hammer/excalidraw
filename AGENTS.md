@@ -5,7 +5,7 @@
 ### Services
 
 | Service | Command | Port | Notes |
-|---------|---------|------|-------|
+| --- | --- | --- | --- |
 | Excalidraw App (Vite dev server) | `yarn start` | 3001 | Main frontend; all other services are external/optional |
 
 ### Key development commands

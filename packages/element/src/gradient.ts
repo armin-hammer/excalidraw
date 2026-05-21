@@ -32,7 +32,7 @@ export const hasBackgroundGradient = (
   const gradient = element.backgroundGradient;
   return (
     gradient != null &&
-    gradient.type === "linear" &&
+    (gradient.type === "linear" || gradient.type === "radial") &&
     gradient.colors.length >= MIN_GRADIENT_STOPS
   );
 };
@@ -60,7 +60,10 @@ export const normalizeBackgroundGradient = (
     return null;
   }
   const gradient = raw as Partial<BackgroundGradient>;
-  if (gradient.type !== "linear" || !Array.isArray(gradient.colors)) {
+  if (
+    (gradient.type !== "linear" && gradient.type !== "radial") ||
+    !Array.isArray(gradient.colors)
+  ) {
     return null;
   }
 
@@ -79,16 +82,40 @@ export const normalizeBackgroundGradient = (
       : 0;
 
   return {
-    type: "linear",
+    type: gradient.type,
     colors: colors as unknown as BackgroundGradient["colors"],
     angle,
   };
 };
 
-export const getGradientPreviewCss = (
-  gradient: BackgroundGradient,
-): string => {
+/** Focal point as percentage for CSS radial-gradient preview. */
+export const getRadialGradientFocalPointPercent = (
+  width: number,
+  height: number,
+  angleDeg: number,
+): { x: number; y: number } => {
+  const cx = width / 2;
+  const cy = height / 2;
+  const angleRad = degreesToRadians(
+    angleDeg as import("@excalidraw/math").Degrees,
+  );
+  const maxOffset = (Math.min(width, height) / 2) * 0.7;
+  return {
+    x: ((cx + Math.cos(angleRad) * maxOffset) / width) * 100,
+    y: ((cy + Math.sin(angleRad) * maxOffset) / height) * 100,
+  };
+};
+
+export const getGradientPreviewCss = (gradient: BackgroundGradient): string => {
   const stops = gradient.colors.join(", ");
+  if (gradient.type === "radial") {
+    const { x, y } = getRadialGradientFocalPointPercent(
+      100,
+      100,
+      gradient.angle,
+    );
+    return `radial-gradient(ellipse at ${x}% ${y}%, ${stops})`;
+  }
   return `linear-gradient(${gradient.angle}deg, ${stops})`;
 };
 
@@ -109,12 +136,13 @@ export const getLinearGradientEndpoints = (
 ): { x0: number; y0: number; x1: number; y1: number } => {
   const cx = width / 2;
   const cy = height / 2;
-  const angleRad = degreesToRadians(angleDeg as import("@excalidraw/math").Degrees);
+  const angleRad = degreesToRadians(
+    angleDeg as import("@excalidraw/math").Degrees,
+  );
   const dx = Math.cos(angleRad);
   const dy = Math.sin(angleRad);
 
-  const halfDiagonal =
-    Math.abs(width * dx) / 2 + Math.abs(height * dy) / 2;
+  const halfDiagonal = Math.abs(width * dx) / 2 + Math.abs(height * dy) / 2;
 
   return {
     x0: cx - dx * halfDiagonal,
@@ -124,12 +152,59 @@ export const getLinearGradientEndpoints = (
   };
 };
 
+/** Radial gradient circle params in element-local coordinates. */
+export const getRadialGradientCircleParams = (
+  width: number,
+  height: number,
+  angleDeg: number,
+): {
+  fx: number;
+  fy: number;
+  fr: number;
+  cx: number;
+  cy: number;
+  r: number;
+} => {
+  const cx = width / 2;
+  const cy = height / 2;
+  const angleRad = degreesToRadians(
+    angleDeg as import("@excalidraw/math").Degrees,
+  );
+  const radius = Math.hypot(width, height) / 2;
+  const focalOffset = radius * 0.7;
+  return {
+    fx: cx + Math.cos(angleRad) * focalOffset,
+    fy: cy + Math.sin(angleRad) * focalOffset,
+    fr: 0,
+    cx,
+    cy,
+    r: radius,
+  };
+};
+
+export const updateGradientStopColor = (
+  gradient: BackgroundGradient,
+  index: number,
+  newColor: string,
+): BackgroundGradient => {
+  const colors = [...gradient.colors] as string[];
+  colors[index] = newColor;
+  return {
+    ...gradient,
+    colors: colors as unknown as BackgroundGradient["colors"],
+  };
+};
+
 export const getDefaultBackgroundGradient = (
   firstColor: string,
   secondColor?: string,
+  type: BackgroundGradient["type"] = "radial",
 ): BackgroundGradient => ({
-  type: "linear",
-  colors: [firstColor, secondColor ?? "#a5d8ff"] as unknown as BackgroundGradient["colors"],
+  type,
+  colors: [
+    firstColor,
+    secondColor ?? "#a5d8ff",
+  ] as unknown as BackgroundGradient["colors"],
   angle: 0,
 });
 
@@ -232,12 +307,24 @@ export const drawBackgroundGradientFill = (
   }
 
   const gradient = element.backgroundGradient;
-  const { x0, y0, x1, y1 } = getLinearGradientEndpoints(
-    element.width,
-    element.height,
-    gradient.angle,
-  );
-  const canvasGradient = context.createLinearGradient(x0, y0, x1, y1);
+  const canvasGradient =
+    gradient.type === "radial"
+      ? (() => {
+          const { fx, fy, fr, cx, cy, r } = getRadialGradientCircleParams(
+            element.width,
+            element.height,
+            gradient.angle,
+          );
+          return context.createRadialGradient(fx, fy, fr, cx, cy, r);
+        })()
+      : (() => {
+          const { x0, y0, x1, y1 } = getLinearGradientEndpoints(
+            element.width,
+            element.height,
+            gradient.angle,
+          );
+          return context.createLinearGradient(x0, y0, x1, y1);
+        })();
   const colors = getGradientColorsForRender(gradient, isDarkMode);
   const step = colors.length > 1 ? 1 / (colors.length - 1) : 1;
 
@@ -272,6 +359,34 @@ export const ensureSvgGradientDef = (
   const id = `element-fill-gradient-${elementId}`;
   defs.querySelector(`#${id}`)?.remove();
 
+  const colors = getGradientColorsForRender(gradient, isDarkMode);
+  const step = colors.length > 1 ? 1 / (colors.length - 1) : 1;
+
+  if (gradient.type === "radial") {
+    const { fx, fy, fr, cx, cy, r } = getRadialGradientCircleParams(
+      width,
+      height,
+      gradient.angle,
+    );
+    const radialGradient = doc.createElementNS(SVG_NS, "radialGradient");
+    radialGradient.setAttribute("id", id);
+    radialGradient.setAttribute("gradientUnits", "userSpaceOnUse");
+    radialGradient.setAttribute("cx", `${cx}`);
+    radialGradient.setAttribute("cy", `${cy}`);
+    radialGradient.setAttribute("r", `${r}`);
+    radialGradient.setAttribute("fx", `${fx}`);
+    radialGradient.setAttribute("fy", `${fy}`);
+    radialGradient.setAttribute("fr", `${fr}`);
+    colors.forEach((color, index) => {
+      const stop = doc.createElementNS(SVG_NS, "stop");
+      stop.setAttribute("offset", `${index * step}`);
+      stop.setAttribute("stop-color", color);
+      radialGradient.appendChild(stop);
+    });
+    defs.appendChild(radialGradient);
+    return id;
+  }
+
   const { x0, y0, x1, y1 } = getLinearGradientEndpoints(
     width,
     height,
@@ -284,9 +399,6 @@ export const ensureSvgGradientDef = (
   linearGradient.setAttribute("y1", `${y0}`);
   linearGradient.setAttribute("x2", `${x1}`);
   linearGradient.setAttribute("y2", `${y1}`);
-
-  const colors = getGradientColorsForRender(gradient, isDarkMode);
-  const step = colors.length > 1 ? 1 / (colors.length - 1) : 1;
   colors.forEach((color, index) => {
     const stop = doc.createElementNS(SVG_NS, "stop");
     stop.setAttribute("offset", `${index * step}`);
@@ -370,13 +482,12 @@ export const createSvgGradientFillShape = (
         return null;
       }
       const path = doc.createElementNS(SVG_NS, "path");
-      const d =
-        `M ${simplifiedPoints[0][0]} ${simplifiedPoints[0][1]} ` +
-        simplifiedPoints
-          .slice(1)
-          .map((p) => `L ${p[0]} ${p[1]}`)
-          .join(" ") +
-        " Z";
+      const d = `M ${simplifiedPoints[0][0]} ${
+        simplifiedPoints[0][1]
+      } ${simplifiedPoints
+        .slice(1)
+        .map((p) => `L ${p[0]} ${p[1]}`)
+        .join(" ")} Z`;
       path.setAttribute("d", d);
       path.setAttribute("fill", gradientUrl);
       path.setAttribute("stroke", "none");

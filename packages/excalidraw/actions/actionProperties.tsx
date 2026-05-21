@@ -29,6 +29,7 @@ import {
   canBecomePolygon,
   getNonDeletedElements,
   normalizeBackgroundGradient,
+  updateGradientStopColor,
 } from "@excalidraw/element";
 
 import {
@@ -474,6 +475,33 @@ export const actionChangeBackgroundColor = register<
       };
     }
 
+    const activeGradient = normalizeBackgroundGradient(
+      appState.currentItemBackgroundGradient,
+    );
+    if (activeGradient && value.currentItemBackgroundGradient === undefined) {
+      const gradient = updateGradientStopColor(
+        activeGradient,
+        0,
+        value.currentItemBackgroundColor,
+      );
+      return {
+        elements: changeProperty(elements, appState, (el) =>
+          newElementWith(el, {
+            backgroundColor: value.currentItemBackgroundColor,
+            backgroundGradient: gradient,
+            fillStyle: "solid",
+          }),
+        ),
+        appState: {
+          ...appState,
+          ...value,
+          currentItemBackgroundGradient: gradient,
+          currentItemFillStyle: "solid",
+        },
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+      };
+    }
+
     let nextElements;
 
     const selectedElements = app.scene.getSelectedElements(appState);
@@ -552,7 +580,9 @@ export const actionChangeBackgroundColor = register<
                 ),
             );
             return serialized
-              ? (JSON.parse(serialized) as ExcalidrawElement["backgroundGradient"])
+              ? (JSON.parse(
+                  serialized,
+                ) as ExcalidrawElement["backgroundGradient"])
               : null;
           })()}
           onGradientChange={(gradient) =>

@@ -8,9 +8,7 @@ import {
   KEYS,
 } from "@excalidraw/common";
 
-import {
-  updateGradientStopColor,
-} from "./GradientPicker";
+import { updateGradientStopColor } from "@excalidraw/element";
 
 import type { BackgroundGradient } from "@excalidraw/element/types";
 import type { ExcalidrawElement } from "@excalidraw/element/types";
@@ -132,9 +130,6 @@ export const Picker = React.forwardRef(
         onGradientChange(
           updateGradientStopColor(gradient, activeGradientStopIndex, newColor),
         );
-        if (activeGradientStopIndex === 0) {
-          onChange(newColor);
-        }
         return;
       }
       onChange(newColor);

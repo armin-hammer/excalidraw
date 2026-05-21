@@ -9,9 +9,15 @@ import {
   isWritableElement,
 } from "@excalidraw/common";
 
+import { updateGradientStopColor } from "@excalidraw/element";
+
+import { getGradientPreviewCss } from "@excalidraw/element";
+
 import type { ColorTuple, ColorPaletteCustom } from "@excalidraw/common";
 
 import type { ExcalidrawElement } from "@excalidraw/element/types";
+
+import type { BackgroundGradient } from "@excalidraw/element/types";
 
 import { useAtom } from "../../editor-jotai";
 import { t } from "../../i18n";
@@ -33,10 +39,6 @@ import { TopPicks } from "./TopPicks";
 import { activeColorPickerSectionAtom } from "./colorPickerUtils";
 
 import "./ColorPicker.scss";
-
-import type { BackgroundGradient } from "@excalidraw/element/types";
-
-import { getGradientPreviewCss } from "@excalidraw/element";
 
 import type { ColorPickerType } from "./colorPickerUtils";
 
@@ -95,15 +97,25 @@ const ColorPickerPopupContent = ({
 
   const [eyeDropperState, setEyeDropperState] = useAtom(activeEyeDropperAtom);
 
+  const handleColorChange = (changedColor: string) => {
+    if (type === "elementBackground" && gradient && onGradientChange) {
+      onGradientChange(updateGradientStopColor(gradient, 0, changedColor));
+      return;
+    }
+    onChange(changedColor);
+  };
+
   const colorInputJSX = (
     <div>
       <PickerHeading>{t("colorPicker.hexCode")}</PickerHeading>
       <ColorInput
-        color={color || ""}
+        color={
+          gradient && type === "elementBackground"
+            ? gradient.colors[0] ?? color ?? ""
+            : color || ""
+        }
         label={label}
-        onChange={(color) => {
-          onChange(color);
-        }}
+        onChange={handleColorChange}
         colorPickerType={type}
         placeholder={t("colorPicker.color")}
       />
@@ -168,7 +180,7 @@ const ColorPickerPopupContent = ({
               ? saveCaretPosition()
               : null;
 
-            onChange(changedColor);
+            handleColorChange(changedColor);
 
             // Restore caret position after color change if editing text
             if (appState.editingTextElement && savedSelection) {
@@ -180,7 +192,7 @@ const ColorPickerPopupContent = ({
               if (force) {
                 state = state || {
                   keepOpenOnAlt: true,
-                  onSelect: onChange,
+                  onSelect: handleColorChange,
                   colorPickerType: type,
                 };
                 state.keepOpenOnAlt = true;
@@ -191,7 +203,7 @@ const ColorPickerPopupContent = ({
                 ? null
                 : {
                     keepOpenOnAlt: false,
-                    onSelect: onChange,
+                    onSelect: handleColorChange,
                     colorPickerType: type,
                   };
             });

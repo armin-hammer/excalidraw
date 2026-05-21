@@ -4,6 +4,8 @@ import { COLOR_PALETTE } from "@excalidraw/common";
 
 import {
   getLinearGradientEndpoints,
+  getRadialGradientCircleParams,
+  getRadialGradientFocalPointPercent,
   getGradientPreviewCss,
   hasBackgroundGradient,
   isElementFilled,
@@ -105,5 +107,39 @@ describe("gradient utils", () => {
         angle: 90,
       }),
     ).toBe("linear-gradient(90deg, #ff0000, #0000ff)");
+  });
+
+  it("normalizeBackgroundGradient accepts radial type", () => {
+    expect(
+      normalizeBackgroundGradient({
+        type: "radial",
+        colors: ["#ff0000", "#0000ff"],
+        angle: 45,
+      }),
+    ).toEqual({
+      type: "radial",
+      colors: ["#ff0000", "#0000ff"],
+      angle: 45,
+    });
+  });
+
+  it("getGradientPreviewCss builds radial-gradient string with angle", () => {
+    const css = getGradientPreviewCss({
+      type: "radial",
+      colors: ["#ff0000", "#0000ff"],
+      angle: 90,
+    });
+    expect(css).toMatch(/^radial-gradient\(ellipse at /);
+    expect(css).toContain("#ff0000");
+    expect(css).toContain("#0000ff");
+    const { x, y } = getRadialGradientFocalPointPercent(100, 100, 90);
+    expect(css).toContain(`at ${x}% ${y}%`);
+  });
+
+  it("getRadialGradientCircleParams offsets focal point by angle", () => {
+    const at0 = getRadialGradientCircleParams(100, 50, 0);
+    const at90 = getRadialGradientCircleParams(100, 50, 90);
+    expect(at0.fx).not.toBeCloseTo(at90.fx, 0);
+    expect(at0.fy).not.toBeCloseTo(at90.fy, 0);
   });
 });

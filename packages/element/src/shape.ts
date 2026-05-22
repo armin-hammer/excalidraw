@@ -52,6 +52,7 @@ import {
   isIframeLikeElement,
   isLinearElement,
 } from "./typeChecks";
+import { hasFillGradient } from "./fillGradient";
 import { getCornerRadius, isPathALoop } from "./utils";
 import { headingForPointIsHorizontal } from "./heading";
 
@@ -232,7 +233,9 @@ export const generateRoughOptions = (
     case "diamond":
     case "ellipse": {
       options.fillStyle = element.fillStyle;
-      options.fill = isTransparent(element.backgroundColor)
+      options.fill = hasFillGradient(element)
+        ? undefined
+        : isTransparent(element.backgroundColor)
         ? undefined
         : isDarkMode
         ? applyDarkModeFilter(element.backgroundColor)
@@ -246,12 +249,13 @@ export const generateRoughOptions = (
     case "freedraw": {
       if (isPathALoop(element.points)) {
         options.fillStyle = element.fillStyle;
-        options.fill =
-          element.backgroundColor === "transparent"
-            ? undefined
-            : isDarkMode
-            ? applyDarkModeFilter(element.backgroundColor)
-            : element.backgroundColor;
+        options.fill = hasFillGradient(element)
+          ? undefined
+          : element.backgroundColor === "transparent"
+          ? undefined
+          : isDarkMode
+          ? applyDarkModeFilter(element.backgroundColor)
+          : element.backgroundColor;
       }
       return options;
     }

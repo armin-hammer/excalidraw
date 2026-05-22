@@ -413,6 +413,7 @@ export const STROKE_WIDTH = {
 export const DEFAULT_ELEMENT_PROPS: {
   strokeColor: ExcalidrawElement["strokeColor"];
   backgroundColor: ExcalidrawElement["backgroundColor"];
+  fillGradient: ExcalidrawElement["fillGradient"];
   fillStyle: ExcalidrawElement["fillStyle"];
   strokeWidth: ExcalidrawElement["strokeWidth"];
   strokeStyle: ExcalidrawElement["strokeStyle"];
@@ -422,6 +423,7 @@ export const DEFAULT_ELEMENT_PROPS: {
 } = {
   strokeColor: COLOR_PALETTE.black,
   backgroundColor: COLOR_PALETTE.transparent,
+  fillGradient: null,
   fillStyle: "solid",
   strokeWidth: 2,
   strokeStyle: "solid",

@@ -26,6 +26,7 @@ import {
   isPointInElement,
   isValidPolygon,
   projectFixedPointOntoDiagonal,
+  normalizeFillGradient,
 } from "@excalidraw/element";
 import { normalizeFixedPoint } from "@excalidraw/element";
 import {
@@ -364,6 +365,9 @@ const restoreElementWithProperties = <
     strokeColor: element.strokeColor || DEFAULT_ELEMENT_PROPS.strokeColor,
     backgroundColor:
       element.backgroundColor || DEFAULT_ELEMENT_PROPS.backgroundColor,
+    fillGradient:
+      normalizeFillGradient(element.fillGradient) ??
+      DEFAULT_ELEMENT_PROPS.fillGradient,
     width: element.width || 0,
     height: element.height || 0,
     seed: element.seed ?? 1,

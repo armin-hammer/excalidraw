@@ -85,7 +85,9 @@ export const shouldTestInside = (element: ExcalidrawElement) => {
   }
 
   const isDraggableFromInside =
-    (hasBackground(element.type) && !isTransparent(element.backgroundColor)) ||
+    (hasBackground(element.type) &&
+      (!isTransparent(element.backgroundColor) ||
+        element.fillGradient != null)) ||
     hasBoundTextElement(element) ||
     isIframeLikeElement(element) ||
     isTextElement(element);

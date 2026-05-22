@@ -258,6 +258,7 @@ export class API {
       strokeColor: rest.strokeColor ?? appState.currentItemStrokeColor,
       backgroundColor:
         rest.backgroundColor ?? appState.currentItemBackgroundColor,
+      fillGradient: appState.currentItemFillGradient,
       fillStyle: rest.fillStyle ?? appState.currentItemFillStyle,
       strokeWidth: rest.strokeWidth ?? appState.currentItemStrokeWidth,
       strokeStyle: rest.strokeStyle ?? appState.currentItemStrokeStyle,

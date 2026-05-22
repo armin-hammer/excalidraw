@@ -12,6 +12,7 @@ export {
   actionChangeBackgroundColor,
   actionChangeStrokeWidth,
   actionChangeFillStyle,
+  actionChangeFillGradient,
   actionChangeSloppiness,
   actionChangeOpacity,
   actionChangeFontSize,

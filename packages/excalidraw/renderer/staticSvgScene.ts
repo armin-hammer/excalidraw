@@ -32,6 +32,11 @@ import { getContainingFrame } from "@excalidraw/element";
 
 import { getCornerRadius, isPathALoop } from "@excalidraw/element";
 
+import {
+  getSvgFillPathD,
+  getSvgLinearGradientDef,
+  hasFillGradient,
+} from "@excalidraw/element";
 import { ShapeCache } from "@excalidraw/element";
 
 import { getElementAbsoluteCoords } from "@excalidraw/element";
@@ -61,6 +66,64 @@ const roughSVGDrawWithPrecision = (
     options: { ...drawable.options, fixedDecimalPlaceDigits: precision },
   };
   return rsvg.draw(pshape);
+};
+
+const getOrCreateDefs = (svgRoot: SVGElement): SVGDefsElement => {
+  const existing = svgRoot.querySelector("defs");
+  if (existing) {
+    return existing as SVGDefsElement;
+  }
+  const defs = svgRoot.ownerDocument.createElementNS(SVG_NS, "defs");
+  svgRoot.insertBefore(defs, svgRoot.firstChild);
+  return defs;
+};
+
+const createGradientFillNode = (
+  element: NonDeletedExcalidrawElement,
+  svgRoot: SVGElement,
+  renderConfig: SVGRenderConfig,
+  offsetX: number,
+  offsetY: number,
+  degree: number,
+  cx: number,
+  cy: number,
+  opacity: number,
+): SVGPathElement | null => {
+  if (!hasFillGradient(element)) {
+    return null;
+  }
+  const pathD = getSvgFillPathD(element);
+  if (!pathD) {
+    return null;
+  }
+
+  const gradientId = `gradient-${element.id}`;
+  const defs = getOrCreateDefs(svgRoot);
+  const isDarkMode = renderConfig.theme === THEME.DARK;
+  defs.appendChild(
+    getSvgLinearGradientDef(
+      element as NonDeletedExcalidrawElement & {
+        fillGradient: NonNullable<typeof element.fillGradient>;
+      },
+      gradientId,
+      isDarkMode,
+    ),
+  );
+
+  const path = svgRoot.ownerDocument.createElementNS(
+    SVG_NS,
+    "path",
+  ) as SVGPathElement;
+  path.setAttribute("d", pathD);
+  path.setAttribute("fill", `url(#${gradientId})`);
+  if (opacity !== 1) {
+    path.setAttribute("fill-opacity", `${opacity}`);
+  }
+  path.setAttribute(
+    "transform",
+    `translate(${offsetX || 0} ${offsetY || 0}) rotate(${degree} ${cx} ${cy})`,
+  );
+  return path;
 };
 
 const maybeWrapNodesInFrameClipPath = (
@@ -166,15 +229,32 @@ const renderElementToSvg = (
         }) rotate(${degree} ${cx} ${cy})`,
       );
 
+      const gradientNode = createGradientFillNode(
+        element,
+        svgRoot,
+        renderConfig,
+        offsetX,
+        offsetY,
+        degree,
+        cx,
+        cy,
+        opacity,
+      );
+      const nodes = gradientNode ? [gradientNode, node] : [node];
+
       const g = maybeWrapNodesInFrameClipPath(
         element,
         root,
-        [node],
+        nodes,
         renderConfig.frameRendering,
         elementsMap,
       );
 
-      addToRoot(g || node, element);
+      if (g) {
+        addToRoot(g, element);
+      } else {
+        nodes.forEach((n) => addToRoot(n, element));
+      }
       break;
     }
     case "iframe":

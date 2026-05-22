@@ -163,10 +163,24 @@ export const SelectedShapeActions = ({
 
   const showFillIcons =
     (hasBackground(appState.activeTool.type) &&
-      !isTransparent(appState.currentItemBackgroundColor)) ||
+      (!isTransparent(appState.currentItemBackgroundColor) ||
+        appState.currentItemFillGradient != null)) ||
     targetElements.some(
       (element) =>
-        hasBackground(element.type) && !isTransparent(element.backgroundColor),
+        hasBackground(element.type) &&
+        (!isTransparent(element.backgroundColor) ||
+          element.fillGradient != null),
+    );
+
+  const showGradientFill =
+    (hasBackground(appState.activeTool.type) &&
+      (appState.currentItemFillGradient != null ||
+        !isTransparent(appState.currentItemBackgroundColor))) ||
+    targetElements.some(
+      (element) =>
+        hasBackground(element.type) &&
+        (element.fillGradient != null ||
+          !isTransparent(element.backgroundColor)),
     );
 
   const showLinkIcon =
@@ -195,6 +209,7 @@ export const SelectedShapeActions = ({
       {canChangeBackgroundColor(appState, targetElements) && (
         <div>{renderAction("changeBackgroundColor")}</div>
       )}
+      {showGradientFill && renderAction("changeFillGradient")}
       {showFillIcons && renderAction("changeFillStyle")}
 
       {(hasStrokeWidth(appState.activeTool.type) ||
@@ -330,10 +345,24 @@ const CombinedShapeProperties = ({
 }) => {
   const showFillIcons =
     (hasBackground(appState.activeTool.type) &&
-      !isTransparent(appState.currentItemBackgroundColor)) ||
+      (!isTransparent(appState.currentItemBackgroundColor) ||
+        appState.currentItemFillGradient != null)) ||
     targetElements.some(
       (element) =>
-        hasBackground(element.type) && !isTransparent(element.backgroundColor),
+        hasBackground(element.type) &&
+        (!isTransparent(element.backgroundColor) ||
+          element.fillGradient != null),
+    );
+
+  const showGradientFill =
+    (hasBackground(appState.activeTool.type) &&
+      (appState.currentItemFillGradient != null ||
+        !isTransparent(appState.currentItemBackgroundColor))) ||
+    targetElements.some(
+      (element) =>
+        hasBackground(element.type) &&
+        (element.fillGradient != null ||
+          !isTransparent(element.backgroundColor)),
     );
 
   const shouldShowCombinedProperties =
@@ -388,6 +417,7 @@ const CombinedShapeProperties = ({
             onClose={() => {}}
           >
             <div className="selected-shape-actions">
+              {showGradientFill && renderAction("changeFillGradient")}
               {showFillIcons && renderAction("changeFillStyle")}
               {(hasStrokeWidth(appState.activeTool.type) ||
                 targetElements.some((element) =>

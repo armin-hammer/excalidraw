@@ -72,6 +72,7 @@ import type {
   ExcalidrawElement,
   ExcalidrawLinearElement,
   ExcalidrawTextElement,
+  FillGradient,
   FontFamilyValues,
   TextAlign,
   VerticalAlign,
@@ -84,6 +85,7 @@ import type { CaptureUpdateActionType } from "@excalidraw/element";
 import { trackEvent } from "../analytics";
 import { RadioSelection } from "../components/RadioSelection";
 import { ColorPicker } from "../components/ColorPicker/ColorPicker";
+import { GradientFillPicker } from "../components/GradientFillPicker/GradientFillPicker";
 import { FontPicker } from "../components/FontPicker/FontPicker";
 import { IconPicker } from "../components/IconPicker";
 import { Range } from "../components/Range";
@@ -458,6 +460,65 @@ export const actionChangeBackgroundColor = register<
           updateData={updateData}
         />
       </>
+    );
+  },
+});
+
+export const actionChangeFillGradient = register<
+  Pick<AppState, "currentItemFillGradient">
+>({
+  name: "changeFillGradient",
+  label: "labels.gradientFill",
+  trackEvent: false,
+  perform: (elements, appState, value) => {
+    if (value == null || value.currentItemFillGradient === undefined) {
+      return {
+        appState: {
+          ...appState,
+          ...value,
+        },
+        captureUpdate: CaptureUpdateAction.EVENTUALLY,
+      };
+    }
+
+    const fillGradient = value.currentItemFillGradient;
+    return {
+      elements: changeProperty(elements, appState, (el) =>
+        newElementWith(el, {
+          fillGradient,
+          ...(fillGradient ? { fillStyle: "solid" as const } : {}),
+        }),
+      ),
+      appState: {
+        ...appState,
+        currentItemFillGradient: fillGradient,
+        ...(fillGradient ? { currentItemFillStyle: "solid" as const } : {}),
+      },
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+    };
+  },
+  PanelComponent: ({ elements, appState, updateData, app }) => {
+    const nonDeletedElements = getNonDeletedElements(elements);
+    let fillGradient: FillGradient | null = appState.currentItemFillGradient;
+
+    if (isSomeElementSelected(nonDeletedElements, appState)) {
+      const selectedElements = app.scene.getSelectedElements(appState);
+      const targetElements = selectedElements.filter((el) =>
+        el.hasOwnProperty("fillGradient"),
+      );
+      fillGradient =
+        reduceToCommonValue(targetElements, (el) => el.fillGradient) ?? null;
+    }
+
+    return (
+      <GradientFillPicker
+        fillGradient={fillGradient}
+        onChange={(gradient) =>
+          updateData({ currentItemFillGradient: gradient })
+        }
+        elements={elements}
+        appState={appState}
+      />
     );
   },
 });

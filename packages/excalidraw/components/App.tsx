@@ -137,6 +137,7 @@ import {
   refreshTextDimensions,
   deepCopyElement,
   duplicateElements,
+  elementWithCanvasCache,
   hasBoundTextElement,
   getCellAtElementPoint,
   isArrowElement,
@@ -6581,11 +6582,13 @@ class App extends React.Component<AppProps, AppState> {
             )?.text ?? "";
           const nextText = window.prompt("Edit table cell", currentText);
           if (nextText !== null) {
+            this.store.scheduleCapture();
             this.scene.mutateElement(
               hitElement,
               mutateTableCell(hitElement, cell.rowId, cell.colId, nextText),
             );
-            this.store.scheduleCapture();
+            elementWithCanvasCache.delete(hitElement);
+            this.triggerRender(true);
           }
           return;
         }

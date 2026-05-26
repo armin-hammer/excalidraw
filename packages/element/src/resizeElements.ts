@@ -48,6 +48,7 @@ import {
   getApproxMinLineHeight,
 } from "./textMeasurements";
 import { wrapText } from "./textWrapping";
+import { normalizeTableGeometry } from "./tableLayout";
 import {
   isArrowElement,
   isBindingElement,
@@ -884,6 +885,17 @@ export const resizeSingleElement = (
       height: Math.abs(nextHeight),
       ...rescaledPoints,
     };
+
+    if (latestElement.type === "table") {
+      updates = {
+        ...updates,
+        ...normalizeTableGeometry({
+          ...latestElement,
+          width: Math.abs(nextWidth),
+          height: Math.abs(nextHeight),
+        }),
+      };
+    }
 
     if (isBindingElement(latestElement)) {
       if (latestElement.startBinding) {

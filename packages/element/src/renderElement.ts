@@ -19,6 +19,7 @@ import {
   THEME,
   distance,
   getFontString,
+  getLineHeight,
   isRTL,
   getVerticalOffset,
   invariant,
@@ -67,6 +68,7 @@ import { getContainingFrame } from "./frame";
 import { getCornerRadius } from "./utils";
 
 import { ShapeCache } from "./shape";
+import { computeTableLayout } from "./tableLayout";
 
 import type {
   ExcalidrawElement,
@@ -78,6 +80,7 @@ import type {
   ExcalidrawFrameLikeElement,
   NonDeletedSceneElementsMap,
   ElementsMap,
+  ExcalidrawTableElement,
 } from "./types";
 
 import type { RoughCanvas } from "roughjs/bin/canvas";
@@ -391,6 +394,10 @@ const drawElementOnCanvas = (
   renderConfig: StaticCanvasRenderConfig,
 ) => {
   switch (element.type) {
+    case "table": {
+      drawTableElementOnCanvas(element, rc, context, renderConfig);
+      break;
+    }
     case "rectangle":
     case "iframe":
     case "embeddable":
@@ -598,6 +605,83 @@ const drawElementOnCanvas = (
       }
     }
   }
+};
+
+const drawTableElementOnCanvas = (
+  element: ExcalidrawTableElement,
+  rc: RoughCanvas,
+  context: CanvasRenderingContext2D,
+  renderConfig: StaticCanvasRenderConfig,
+) => {
+  const layout = computeTableLayout(element);
+  const isDarkMode = renderConfig.theme === THEME.DARK;
+  const resolveColor = (color: string) =>
+    isDarkMode ? applyDarkModeFilter(color) : color;
+
+  context.save();
+  if (element.backgroundColor !== "transparent") {
+    context.fillStyle = resolveColor(element.backgroundColor);
+    context.fillRect(0, 0, layout.frame.width, layout.frame.height);
+  }
+  if (element.headerFill) {
+    context.fillStyle = resolveColor(element.headerFill);
+    if (element.headerRow && layout.rows[0]) {
+      context.fillRect(0, 0, layout.frame.width, layout.rows[0].height);
+    }
+    if (element.headerColumn && layout.columns[0]) {
+      context.fillRect(0, 0, layout.columns[0].width, layout.frame.height);
+    }
+  }
+
+  for (const shape of ShapeCache.generateElementShape(element, renderConfig)) {
+    rc.draw(shape);
+  }
+
+  context.font = getFontString({
+    fontFamily: element.fontFamily,
+    fontSize: element.fontSize,
+  });
+  context.fillStyle = resolveColor(element.textColor);
+  context.textBaseline = "alphabetic";
+
+  const lineHeightPx = element.fontSize * getLineHeight(element.fontFamily);
+  const verticalOffset = getVerticalOffset(
+    element.fontFamily,
+    element.fontSize,
+    lineHeightPx,
+  );
+
+  for (const cell of layout.cells) {
+    if (!cell.text) {
+      continue;
+    }
+    context.save();
+    context.beginPath();
+    context.rect(
+      cell.textBox.x,
+      cell.textBox.y,
+      cell.textBox.width,
+      cell.textBox.height,
+    );
+    context.clip();
+    context.textAlign = element.textAlign as CanvasTextAlign;
+    const horizontalOffset =
+      element.textAlign === "center"
+        ? cell.textBox.width / 2
+        : element.textAlign === "right"
+        ? cell.textBox.width
+        : 0;
+    const lines = cell.text.replace(/\r\n?/g, "\n").split("\n");
+    for (let index = 0; index < lines.length; index++) {
+      context.fillText(
+        lines[index],
+        cell.textBox.x + horizontalOffset,
+        cell.textBox.y + index * lineHeightPx + verticalOffset,
+      );
+    }
+    context.restore();
+  }
+  context.restore();
 };
 
 export const elementWithCanvasCache = new WeakMap<
@@ -886,7 +970,8 @@ export const renderElement = (
     case "image":
     case "text":
     case "iframe":
-    case "embeddable": {
+    case "embeddable":
+    case "table": {
       if (renderConfig.isExporting) {
         const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, elementsMap);
         const cx = (x1 + x2) / 2 + appState.scrollX;

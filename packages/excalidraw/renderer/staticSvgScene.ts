@@ -8,6 +8,7 @@ import {
   isRTL,
   isTestEnv,
   getVerticalOffset,
+  getLineHeight,
   applyDarkModeFilter,
   MIME_TYPES,
 } from "@excalidraw/common";
@@ -33,6 +34,7 @@ import { getContainingFrame } from "@excalidraw/element";
 import { getCornerRadius, isPathALoop } from "@excalidraw/element";
 
 import { ShapeCache } from "@excalidraw/element";
+import { computeTableLayout } from "@excalidraw/element";
 
 import { getElementAbsoluteCoords } from "@excalidraw/element";
 
@@ -422,6 +424,112 @@ const renderElementToSvg = (
         }) rotate(${degree} ${cx} ${cy})`,
       );
       wrapper.setAttribute("stroke", "none");
+
+      const g = maybeWrapNodesInFrameClipPath(
+        element,
+        root,
+        [wrapper],
+        renderConfig.frameRendering,
+        elementsMap,
+      );
+
+      addToRoot(g || wrapper, element);
+      break;
+    }
+    case "table": {
+      const layout = computeTableLayout(element);
+      const wrapper = svgRoot.ownerDocument.createElementNS(SVG_NS, "g");
+      wrapper.setAttribute(
+        "transform",
+        `translate(${offsetX || 0} ${
+          offsetY || 0
+        }) rotate(${degree} ${cx} ${cy})`,
+      );
+      const resolveColor = (color: string) =>
+        renderConfig.theme === THEME.DARK ? applyDarkModeFilter(color) : color;
+
+      if (element.backgroundColor !== "transparent") {
+        const body = svgRoot.ownerDocument.createElementNS(SVG_NS, "rect");
+        body.setAttribute("width", `${layout.frame.width}`);
+        body.setAttribute("height", `${layout.frame.height}`);
+        body.setAttribute("fill", resolveColor(element.backgroundColor));
+        wrapper.appendChild(body);
+      }
+
+      if (element.headerFill) {
+        if (element.headerRow && layout.rows[0]) {
+          const header = svgRoot.ownerDocument.createElementNS(SVG_NS, "rect");
+          header.setAttribute("width", `${layout.frame.width}`);
+          header.setAttribute("height", `${layout.rows[0].height}`);
+          header.setAttribute("fill", resolveColor(element.headerFill));
+          wrapper.appendChild(header);
+        }
+        if (element.headerColumn && layout.columns[0]) {
+          const header = svgRoot.ownerDocument.createElementNS(SVG_NS, "rect");
+          header.setAttribute("width", `${layout.columns[0].width}`);
+          header.setAttribute("height", `${layout.frame.height}`);
+          header.setAttribute("fill", resolveColor(element.headerFill));
+          wrapper.appendChild(header);
+        }
+      }
+
+      ShapeCache.generateElementShape(element, renderConfig).forEach(
+        (shape) => {
+          const node = roughSVGDrawWithPrecision(
+            rsvg,
+            shape,
+            MAX_DECIMALS_FOR_SVG_EXPORT,
+          );
+          wrapper.appendChild(node);
+        },
+      );
+
+      const lineHeightPx = element.fontSize * getLineHeight(element.fontFamily);
+      const verticalOffset = getVerticalOffset(
+        element.fontFamily,
+        element.fontSize,
+        lineHeightPx,
+      );
+      const textAnchor =
+        element.textAlign === "center"
+          ? "middle"
+          : element.textAlign === "right"
+          ? "end"
+          : "start";
+      layout.cells.forEach((cell) => {
+        if (!cell.text) {
+          return;
+        }
+        const horizontalOffset =
+          element.textAlign === "center"
+            ? cell.textBox.width / 2
+            : element.textAlign === "right"
+            ? cell.textBox.width
+            : 0;
+        cell.text
+          .replace(/\r\n?/g, "\n")
+          .split("\n")
+          .forEach((line, index) => {
+            const text = svgRoot.ownerDocument.createElementNS(SVG_NS, "text");
+            text.textContent = line;
+            text.setAttribute("x", `${cell.textBox.x + horizontalOffset}`);
+            text.setAttribute(
+              "y",
+              `${cell.textBox.y + index * lineHeightPx + verticalOffset}`,
+            );
+            text.setAttribute("font-family", getFontFamilyString(element));
+            text.setAttribute("font-size", `${element.fontSize}px`);
+            text.setAttribute("fill", resolveColor(element.textColor));
+            text.setAttribute("text-anchor", textAnchor);
+            text.setAttribute("style", "white-space: pre;");
+            wrapper.appendChild(text);
+          });
+      });
+
+      if (opacity !== 1) {
+        wrapper.setAttribute("stroke-opacity", `${opacity}`);
+        wrapper.setAttribute("fill-opacity", `${opacity}`);
+      }
 
       const g = maybeWrapNodesInFrameClipPath(
         element,

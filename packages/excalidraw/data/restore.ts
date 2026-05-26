@@ -11,6 +11,11 @@ import {
   DEFAULT_ELEMENT_PROPS,
   DEFAULT_GRID_SIZE,
   DEFAULT_GRID_STEP,
+  DEFAULT_TABLE_CELL_PADDING,
+  DEFAULT_TABLE_COLUMN_WIDTH,
+  DEFAULT_TABLE_COLUMNS,
+  DEFAULT_TABLE_ROW_HEIGHT,
+  DEFAULT_TABLE_ROWS,
   randomId,
   getUpdatedTimestamp,
   updateActiveTool,
@@ -53,6 +58,7 @@ import { refreshTextDimensions } from "@excalidraw/element";
 import { getNormalizedDimensions } from "@excalidraw/element";
 
 import { isInvisiblySmallElement } from "@excalidraw/element";
+import { normalizeTableGeometry } from "@excalidraw/element";
 
 import type { LocalPoint, Radians } from "@excalidraw/math";
 
@@ -65,6 +71,7 @@ import type {
   ExcalidrawElement,
   ExcalidrawLinearElement,
   ExcalidrawSelectionElement,
+  ExcalidrawTableElement,
   ExcalidrawTextElement,
   FixedPointBinding,
   FontFamilyValues,
@@ -176,6 +183,7 @@ export const AllowedExcalidrawActiveTools: Record<
   eraser: false,
   custom: true,
   frame: true,
+  table: true,
   embeddable: true,
   hand: true,
   laser: false,
@@ -493,6 +501,69 @@ export const restoreElement = (
         scale: element.scale || [1, 1],
         crop: element.crop ?? null,
       });
+    case "table": {
+      const table = element as ExcalidrawTableElement;
+      const rows =
+        Array.isArray(table.rows) && table.rows.length
+          ? table.rows.map((row) => ({
+              id: row.id || randomId(),
+              height: row.height || DEFAULT_TABLE_ROW_HEIGHT,
+            }))
+          : Array.from({ length: DEFAULT_TABLE_ROWS }, () => ({
+              id: randomId(),
+              height: DEFAULT_TABLE_ROW_HEIGHT,
+            }));
+      const columns =
+        Array.isArray(table.columns) && table.columns.length
+          ? table.columns.map((column) => ({
+              id: column.id || randomId(),
+              width: column.width || DEFAULT_TABLE_COLUMN_WIDTH,
+            }))
+          : Array.from({ length: DEFAULT_TABLE_COLUMNS }, () => ({
+              id: randomId(),
+              width: DEFAULT_TABLE_COLUMN_WIDTH,
+            }));
+      const rowIds = new Set(rows.map((row) => row.id));
+      const columnIds = new Set(columns.map((column) => column.id));
+      const cells = Array.isArray(table.cells)
+        ? table.cells
+            .filter(
+              (cell) =>
+                rowIds.has(cell.rowId) &&
+                columnIds.has(cell.colId) &&
+                typeof cell.text === "string",
+            )
+            .map((cell) => ({
+              rowId: cell.rowId,
+              colId: cell.colId,
+              text: cell.text,
+              rowSpan: cell.rowSpan || 1,
+              colSpan: cell.colSpan || 1,
+              styleOverride: null,
+            }))
+        : [];
+      const normalized = normalizeTableGeometry({
+        ...table,
+        rows,
+        columns,
+        cells,
+      });
+
+      return restoreElementWithProperties(table, {
+        ...normalized,
+        cells,
+        headerRow: table.headerRow ?? true,
+        headerColumn: table.headerColumn ?? false,
+        cellPadding: table.cellPadding ?? DEFAULT_TABLE_CELL_PADDING,
+        fontFamily: table.fontFamily || DEFAULT_FONT_FAMILY,
+        fontSize: table.fontSize || 20,
+        textAlign: table.textAlign || DEFAULT_TEXT_ALIGN,
+        verticalAlign: table.verticalAlign || DEFAULT_VERTICAL_ALIGN,
+        textColor: table.textColor || table.strokeColor,
+        headerFill: table.headerFill ?? "#f2f2f2",
+        dividerColor: table.dividerColor || table.strokeColor,
+      });
+    }
     case "line":
     // @ts-ignore LEGACY type
     // eslint-disable-next-line no-fallthrough

@@ -56,6 +56,7 @@ import { getCornerRadius, isPathALoop } from "./utils";
 import { headingForPointIsHorizontal } from "./heading";
 
 import { canChangeRoundness } from "./comparisons";
+import { computeTableLayout } from "./tableLayout";
 import {
   elementCenterPoint,
   getArrowheadPoints,
@@ -229,6 +230,7 @@ export const generateRoughOptions = (
     case "rectangle":
     case "iframe":
     case "embeddable":
+    case "table":
     case "diamond":
     case "ellipse": {
       options.fillStyle = element.fillStyle;
@@ -774,8 +776,45 @@ const _generateElementShape = (
   switch (element.type) {
     case "rectangle":
     case "iframe":
-    case "embeddable": {
+    case "embeddable":
+    case "table": {
       let shape: ElementShapes[typeof element.type];
+      if (element.type === "table") {
+        const layout = computeTableLayout(element);
+        const outline = generator.rectangle(
+          0,
+          0,
+          layout.frame.width,
+          layout.frame.height,
+          generateRoughOptions(element, false, isDarkMode),
+        );
+        const dividerOptions = generateRoughOptions(
+          { ...element, strokeColor: element.dividerColor },
+          false,
+          isDarkMode,
+        );
+        return [
+          outline,
+          ...layout.dividers.horizontal.map((divider) =>
+            generator.line(
+              divider.x1,
+              divider.y1,
+              divider.x2,
+              divider.y2,
+              dividerOptions,
+            ),
+          ),
+          ...layout.dividers.vertical.map((divider) =>
+            generator.line(
+              divider.x1,
+              divider.y1,
+              divider.x2,
+              divider.y2,
+              dividerOptions,
+            ),
+          ),
+        ];
+      }
       // this is for rendering the stroke/bg of the embeddable, especially
       // when the src url is not set
 
@@ -1078,6 +1117,8 @@ export const getElementShape = <Point extends GlobalPoint | LocalPoint>(
   elementsMap: ElementsMap,
 ): GeometricShape<Point> => {
   switch (element.type) {
+    case "table":
+      return getPolygonShape(element as any);
     case "rectangle":
     case "diamond":
     case "frame":

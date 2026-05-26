@@ -2,6 +2,11 @@ import {
   DEFAULT_ELEMENT_PROPS,
   DEFAULT_FONT_FAMILY,
   DEFAULT_FONT_SIZE,
+  DEFAULT_TABLE_CELL_PADDING,
+  DEFAULT_TABLE_COLUMN_WIDTH,
+  DEFAULT_TABLE_COLUMNS,
+  DEFAULT_TABLE_ROW_HEIGHT,
+  DEFAULT_TABLE_ROWS,
   DEFAULT_TEXT_ALIGN,
   DEFAULT_VERTICAL_ALIGN,
   VERTICAL_ALIGN,
@@ -48,6 +53,8 @@ import type {
   ExcalidrawArrowElement,
   ExcalidrawElbowArrowElement,
   ExcalidrawLineElement,
+  ExcalidrawTableElement,
+  TableCell,
 } from "./types";
 
 export type ElementConstructorOpts = MarkOptional<
@@ -177,6 +184,87 @@ export const newIframeElement = (
 ): NonDeleted<ExcalidrawIframeElement> => {
   return {
     ..._newElementBase<ExcalidrawIframeElement>("iframe", opts),
+  };
+};
+
+export const newTableElement = (
+  opts: {
+    rows?: number;
+    cols?: number;
+    rowHeights?: readonly number[];
+    columnWidths?: readonly number[];
+    cells?: readonly Partial<TableCell>[];
+    headerRow?: boolean;
+    headerColumn?: boolean;
+    cellPadding?: number;
+    fontFamily?: FontFamilyValues;
+    fontSize?: number;
+    textAlign?: TextAlign;
+    verticalAlign?: VerticalAlign;
+    textColor?: string;
+    headerFill?: string | null;
+    dividerColor?: string;
+  } & ElementConstructorOpts,
+): NonDeleted<ExcalidrawTableElement> => {
+  const rowCount = Math.max(1, opts.rows ?? DEFAULT_TABLE_ROWS);
+  const columnCount = Math.max(1, opts.cols ?? DEFAULT_TABLE_COLUMNS);
+  const rows = Array.from({ length: rowCount }, (_, index) => ({
+    id: randomId(),
+    height: opts.rowHeights?.[index] ?? DEFAULT_TABLE_ROW_HEIGHT,
+  }));
+  const columns = Array.from({ length: columnCount }, (_, index) => ({
+    id: randomId(),
+    width: opts.columnWidths?.[index] ?? DEFAULT_TABLE_COLUMN_WIDTH,
+  }));
+  const width =
+    opts.width ?? columns.reduce((sum, column) => sum + column.width, 0);
+  const height = opts.height ?? rows.reduce((sum, row) => sum + row.height, 0);
+  const validRowIds = new Set(rows.map((row) => row.id));
+  const validColIds = new Set(columns.map((column) => column.id));
+  const cells = (opts.cells ?? [])
+    .filter(
+      (cell): cell is Partial<TableCell> & { rowId: string; colId: string } =>
+        !!cell.rowId &&
+        !!cell.colId &&
+        validRowIds.has(cell.rowId) &&
+        validColIds.has(cell.colId),
+    )
+    .map((cell) => ({
+      rowId: cell.rowId,
+      colId: cell.colId,
+      text: cell.text ?? "",
+      rowSpan: cell.rowSpan ?? 1,
+      colSpan: cell.colSpan ?? 1,
+      styleOverride: null,
+    }));
+
+  return {
+    ..._newElementBase<ExcalidrawTableElement>("table", {
+      ...opts,
+      width,
+      height,
+      backgroundColor:
+        opts.backgroundColor ?? DEFAULT_ELEMENT_PROPS.backgroundColor,
+      strokeColor: opts.strokeColor ?? DEFAULT_ELEMENT_PROPS.strokeColor,
+    }),
+    type: "table",
+    rows,
+    columns,
+    cells,
+    headerRow: opts.headerRow ?? true,
+    headerColumn: opts.headerColumn ?? false,
+    cellPadding: opts.cellPadding ?? DEFAULT_TABLE_CELL_PADDING,
+    fontFamily: opts.fontFamily ?? DEFAULT_FONT_FAMILY,
+    fontSize: opts.fontSize ?? DEFAULT_FONT_SIZE,
+    textAlign: opts.textAlign ?? DEFAULT_TEXT_ALIGN,
+    verticalAlign: opts.verticalAlign ?? DEFAULT_VERTICAL_ALIGN,
+    textColor:
+      opts.textColor ?? opts.strokeColor ?? DEFAULT_ELEMENT_PROPS.strokeColor,
+    headerFill: opts.headerFill ?? "#f2f2f2",
+    dividerColor:
+      opts.dividerColor ??
+      opts.strokeColor ??
+      DEFAULT_ELEMENT_PROPS.strokeColor,
   };
 };
 

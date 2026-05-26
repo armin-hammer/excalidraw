@@ -121,11 +121,13 @@ import {
   isBindingEnabled,
   updateBoundElements,
   LinearElementEditor,
+  mutateTableCell,
   newElementWith,
   newFrameElement,
   newFreeDrawElement,
   newEmbeddableElement,
   newMagicFrameElement,
+  newTableElement,
   newIframeElement,
   newArrowElement,
   newElement,
@@ -136,7 +138,9 @@ import {
   deepCopyElement,
   duplicateElements,
   hasBoundTextElement,
+  getCellAtElementPoint,
   isArrowElement,
+  isTableElement,
   isBindingElement,
   isBindingElementType,
   isBoundToContainer,
@@ -6563,6 +6567,30 @@ class App extends React.Component<AppProps, AppState> {
     if (!event[KEYS.CTRL_OR_CMD] && !this.state.viewModeEnabled) {
       const hitElement = this.getElementAtPosition(sceneX, sceneY);
 
+      if (isTableElement(hitElement)) {
+        const cell = getCellAtElementPoint(
+          hitElement,
+          pointFrom(sceneX, sceneY),
+        );
+        if (cell) {
+          const currentText =
+            hitElement.cells.find(
+              (tableCell) =>
+                tableCell.rowId === cell.rowId &&
+                tableCell.colId === cell.colId,
+            )?.text ?? "";
+          const nextText = window.prompt("Edit table cell", currentText);
+          if (nextText !== null) {
+            this.scene.mutateElement(
+              hitElement,
+              mutateTableCell(hitElement, cell.rowId, cell.colId, nextText),
+            );
+            this.store.scheduleCapture();
+          }
+          return;
+        }
+      }
+
       if (isIframeLikeElement(hitElement)) {
         this.setState({
           activeEmbeddable: { element: hitElement, state: "active" },
@@ -8090,6 +8118,8 @@ class App extends React.Component<AppProps, AppState> {
         pointerDownState,
         this.state.activeTool.type,
       );
+    } else if (this.state.activeTool.type === TOOL_TYPE.table) {
+      this.createTableElementOnPointerDown(pointerDownState);
     } else if (this.state.activeTool.type === "laser") {
       this.laserTrails.startPath(
         pointerDownState.lastCoords.x,
@@ -9565,6 +9595,48 @@ class App extends React.Component<AppProps, AppState> {
         newElement: element,
       });
     }
+  };
+
+  private createTableElementOnPointerDown = (
+    pointerDownState: PointerDownState,
+  ): void => {
+    const [gridX, gridY] = getGridPoint(
+      pointerDownState.origin.x,
+      pointerDownState.origin.y,
+      this.lastPointerDownEvent?.[KEYS.CTRL_OR_CMD]
+        ? null
+        : this.getEffectiveGridSize(),
+    );
+
+    const topLayerFrame = this.getTopLayerFrameAtSceneCoords({
+      x: gridX,
+      y: gridY,
+    });
+
+    const table = newTableElement({
+      x: gridX,
+      y: gridY,
+      strokeColor: this.state.currentItemStrokeColor,
+      backgroundColor: this.state.currentItemBackgroundColor,
+      fillStyle: this.state.currentItemFillStyle,
+      strokeWidth: this.state.currentItemStrokeWidth,
+      strokeStyle: this.state.currentItemStrokeStyle,
+      roughness: this.state.currentItemRoughness,
+      opacity: this.state.currentItemOpacity,
+      locked: false,
+      frameId: topLayerFrame ? topLayerFrame.id : null,
+      fontFamily: this.state.currentItemFontFamily,
+      fontSize: this.state.currentItemFontSize,
+      textAlign: this.state.currentItemTextAlign,
+      textColor: this.state.currentItemStrokeColor,
+      dividerColor: this.state.currentItemStrokeColor,
+    });
+
+    this.insertNewElement(table);
+    this.setState({
+      multiElement: null,
+      newElement: table,
+    });
   };
 
   private createFrameElementOnPointerDown = (

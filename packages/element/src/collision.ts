@@ -62,6 +62,7 @@ import { distanceToElement } from "./distance";
 import { getBindingGap } from "./binding";
 
 import { hasBackground } from "./comparisons";
+import { computeTableLayout, getCellAtPoint } from "./tableLayout";
 
 import type {
   ElementsMap,
@@ -73,6 +74,7 @@ import type {
   ExcalidrawFreeDrawElement,
   ExcalidrawLinearElement,
   ExcalidrawRectanguloidElement,
+  ExcalidrawTableElement,
   NonDeleted,
   NonDeletedExcalidrawElement,
   NonDeletedSceneElementsMap,
@@ -80,6 +82,9 @@ import type {
 } from "./types";
 
 export const shouldTestInside = (element: ExcalidrawElement) => {
+  if (element.type === "table") {
+    return true;
+  }
   if (element.type === "arrow") {
     return false;
   }
@@ -253,6 +258,11 @@ export const hitElementBoundText = (
 
   return isPointInElement(point, boundTextElement, elementsMap);
 };
+
+export const getCellAtElementPoint = (
+  element: ExcalidrawTableElement,
+  point: GlobalPoint,
+) => getCellAtPoint(element, computeTableLayout(element), point);
 
 const bindingBorderTest = (
   element: NonDeleted<ExcalidrawBindableElement>,
@@ -456,6 +466,7 @@ export const intersectElementWithLineSegment = (
     case "frame":
     case "selection":
     case "magicframe":
+    case "table":
       return intersectRectanguloidWithLineSegment(
         element,
         elementsMap,

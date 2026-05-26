@@ -1,4 +1,4 @@
-import { isTextElement } from "@excalidraw/element";
+import { isTableElement, isTextElement, tableToTsv } from "@excalidraw/element";
 import { getTextFromElements } from "@excalidraw/element";
 
 import { CODES, KEYS, isFirefox } from "@excalidraw/common";
@@ -34,6 +34,16 @@ export const actionCopy = register<ClipboardEvent | null>({
 
     try {
       await copyToClipboard(elementsToCopy, app.files, event);
+      if (
+        elementsToCopy.length === 1 &&
+        isTableElement(elementsToCopy[0]) &&
+        event?.clipboardData
+      ) {
+        event.clipboardData.setData(
+          "text/plain",
+          tableToTsv(elementsToCopy[0]),
+        );
+      }
     } catch (error: any) {
       return {
         captureUpdate: CaptureUpdateAction.EVENTUALLY,

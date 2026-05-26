@@ -9,6 +9,7 @@ import {
   LineIcon,
   FreedrawIcon,
   TextIcon,
+  TableIcon,
   ImageIcon,
   EraserIcon,
   laserPointerToolIcon,
@@ -96,6 +97,14 @@ export const SHAPES = [
     key: null,
     numericKey: KEYS["9"],
     fillable: false,
+    toolbar: true,
+  },
+  {
+    icon: TableIcon,
+    value: "table",
+    key: null,
+    numericKey: null,
+    fillable: true,
     toolbar: true,
   },
   {

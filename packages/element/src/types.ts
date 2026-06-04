@@ -174,6 +174,40 @@ export type ExcalidrawFrameLikeElement =
   | ExcalidrawFrameElement
   | ExcalidrawMagicFrameElement;
 
+export type TableRow = Readonly<{
+  id: string;
+  height: number;
+}>;
+
+export type TableColumn = Readonly<{
+  id: string;
+  width: number;
+}>;
+
+export type TableCell = Readonly<{
+  rowId: TableRow["id"];
+  colId: TableColumn["id"];
+  text: string;
+}>;
+
+export type ExcalidrawTableElement = _ExcalidrawElementBase &
+  Readonly<{
+    type: "table";
+    rows: readonly TableRow[];
+    columns: readonly TableColumn[];
+    cells: readonly TableCell[];
+    headerRow: boolean;
+    headerColumn: boolean;
+    cellPadding: number;
+    textAlign: TextAlign;
+    verticalAlign: VerticalAlign;
+    fontFamily: FontFamilyValues;
+    fontSize: number;
+    textColor: string;
+    headerFill: string | null;
+    dividerColor: string;
+  }>;
+
 /**
  * These are elements that don't have any additional properties.
  */
@@ -195,6 +229,7 @@ export type ExcalidrawRectanguloidElement =
   | ExcalidrawFreeDrawElement
   | ExcalidrawIframeLikeElement
   | ExcalidrawFrameLikeElement
+  | ExcalidrawTableElement
   | ExcalidrawEmbeddableElement
   | ExcalidrawSelectionElement;
 
@@ -213,6 +248,7 @@ export type ExcalidrawElement =
   | ExcalidrawFrameElement
   | ExcalidrawMagicFrameElement
   | ExcalidrawIframeElement
+  | ExcalidrawTableElement
   | ExcalidrawEmbeddableElement;
 
 export type ExcalidrawNonSelectionElement = Exclude<
@@ -264,6 +300,7 @@ export type ExcalidrawBindableElement =
   | ExcalidrawImageElement
   | ExcalidrawIframeElement
   | ExcalidrawEmbeddableElement
+  | ExcalidrawTableElement
   | ExcalidrawFrameElement
   | ExcalidrawMagicFrameElement;
 

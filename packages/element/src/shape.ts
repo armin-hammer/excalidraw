@@ -56,6 +56,7 @@ import { getCornerRadius, isPathALoop } from "./utils";
 import { headingForPointIsHorizontal } from "./heading";
 
 import { canChangeRoundness } from "./comparisons";
+import { computeTableLayout } from "./tableLayout";
 import {
   elementCenterPoint,
   getArrowheadPoints,
@@ -229,6 +230,7 @@ export const generateRoughOptions = (
     case "rectangle":
     case "iframe":
     case "embeddable":
+    case "table":
     case "diamond":
     case "ellipse": {
       options.fillStyle = element.fillStyle;
@@ -818,6 +820,36 @@ const _generateElementShape = (
       }
       return shape;
     }
+    case "table": {
+      const layout = computeTableLayout(element);
+      const options = {
+        ...generateRoughOptions(element, false, isDarkMode),
+        fill: undefined,
+      };
+      const dividerOptions = {
+        ...options,
+        stroke: isDarkMode
+          ? applyDarkModeFilter(element.dividerColor)
+          : element.dividerColor,
+      };
+      const shapes: ElementShapes[typeof element.type] = [
+        generator.rectangle(
+          layout.frame.x,
+          layout.frame.y,
+          layout.frame.width,
+          layout.frame.height,
+          options,
+        ),
+        ...layout.dividers.horizontal.map((line) =>
+          generator.line(line.x1, line.y1, line.x2, line.y2, dividerOptions),
+        ),
+        ...layout.dividers.vertical.map((line) =>
+          generator.line(line.x1, line.y1, line.x2, line.y2, dividerOptions),
+        ),
+      ];
+
+      return shapes;
+    }
     case "diamond": {
       let shape: ElementShapes[typeof element.type];
 
@@ -1079,6 +1111,7 @@ export const getElementShape = <Point extends GlobalPoint | LocalPoint>(
 ): GeometricShape<Point> => {
   switch (element.type) {
     case "rectangle":
+    case "table":
     case "diamond":
     case "frame":
     case "magicframe":

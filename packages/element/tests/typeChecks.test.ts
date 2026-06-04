@@ -1,8 +1,26 @@
 import { API } from "@excalidraw/excalidraw/tests/helpers/api";
 
-import { hasBoundTextElement } from "../src/typeChecks";
+import { newTableElement } from "../src/newElement";
+import {
+  hasBoundTextElement,
+  isBindableElement,
+  isExcalidrawElement,
+  isRectanguloidElement,
+  isTableElement,
+} from "../src/typeChecks";
 
 describe("Test TypeChecks", () => {
+  describe("Test table element guards", () => {
+    it("should identify tables as Excalidraw table elements", () => {
+      const table = newTableElement({ x: 0, y: 0 });
+
+      expect(isTableElement(table)).toBeTruthy();
+      expect(isExcalidrawElement(table)).toBeTruthy();
+      expect(isBindableElement(table)).toBeTruthy();
+      expect(isRectanguloidElement(table)).toBeTruthy();
+    });
+  });
+
   describe("Test hasBoundTextElement", () => {
     it("should return true for text bindable containers with bound text", () => {
       expect(

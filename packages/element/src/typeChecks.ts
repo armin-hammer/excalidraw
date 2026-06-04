@@ -29,6 +29,7 @@ import type {
   ExcalidrawLineElement,
   ExcalidrawFlowchartNodeElement,
   ExcalidrawLinearElementSubType,
+  ExcalidrawTableElement,
 } from "./types";
 
 export const isInitializedImageElement = (
@@ -79,6 +80,12 @@ export const isMagicFrameElement = (
   element: ExcalidrawElement | null,
 ): element is ExcalidrawMagicFrameElement => {
   return element != null && element.type === "magicframe";
+};
+
+export const isTableElement = (
+  element: ExcalidrawElement | null,
+): element is ExcalidrawTableElement => {
+  return element != null && element.type === "table";
 };
 
 export const isFrameLikeElement = (
@@ -187,6 +194,7 @@ export const isBindableElement = (
       element.type === "image" ||
       element.type === "iframe" ||
       element.type === "embeddable" ||
+      element.type === "table" ||
       element.type === "frame" ||
       element.type === "magicframe" ||
       (element.type === "text" && !element.containerId))
@@ -203,6 +211,7 @@ export const isRectanguloidElement = (
       element.type === "image" ||
       element.type === "iframe" ||
       element.type === "embeddable" ||
+      element.type === "table" ||
       element.type === "frame" ||
       element.type === "magicframe" ||
       (element.type === "text" && !element.containerId))
@@ -221,6 +230,7 @@ export const isRectangularElement = (
       element.type === "text" ||
       element.type === "iframe" ||
       element.type === "embeddable" ||
+      element.type === "table" ||
       element.type === "frame" ||
       element.type === "magicframe" ||
       element.type === "freedraw")
@@ -261,6 +271,7 @@ export const isExcalidrawElement = (
     case "frame":
     case "magicframe":
     case "image":
+    case "table":
     case "selection": {
       return true;
     }
@@ -309,6 +320,7 @@ export const isUsingAdaptiveRadius = (type: string) =>
   type === "rectangle" ||
   type === "embeddable" ||
   type === "iframe" ||
+  type === "table" ||
   type === "image";
 
 export const isUsingProportionalRadius = (type: string) =>
@@ -404,6 +416,7 @@ export const isEligibleFrameChildType = (type: ElementOrToolType) => {
     case "text":
     case "image":
     case "frame":
+    case "table":
     case "embeddable": {
       return true;
     }

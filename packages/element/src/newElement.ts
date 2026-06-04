@@ -44,6 +44,9 @@ import type {
   ExcalidrawEmbeddableElement,
   ExcalidrawMagicFrameElement,
   ExcalidrawIframeElement,
+  ExcalidrawTableElement,
+  TableColumn,
+  TableRow,
   ElementsMap,
   ExcalidrawArrowElement,
   ExcalidrawElbowArrowElement,
@@ -178,6 +181,88 @@ export const newIframeElement = (
   return {
     ..._newElementBase<ExcalidrawIframeElement>("iframe", opts),
   };
+};
+
+export const DEFAULT_TABLE_ROW_COUNT = 3;
+export const DEFAULT_TABLE_COLUMN_COUNT = 3;
+export const DEFAULT_TABLE_ROW_HEIGHT = 40;
+export const DEFAULT_TABLE_COLUMN_WIDTH = 120;
+export const DEFAULT_TABLE_CELL_PADDING = 8;
+
+const newTableRows = (rows: number | readonly TableRow[] = DEFAULT_TABLE_ROW_COUNT) => {
+  if (typeof rows !== "number") {
+    return rows;
+  }
+
+  return Array.from({ length: rows }, () => ({
+    id: randomId(),
+    height: DEFAULT_TABLE_ROW_HEIGHT,
+  }));
+};
+
+const newTableColumns = (
+  columns: number | readonly TableColumn[] = DEFAULT_TABLE_COLUMN_COUNT,
+) => {
+  if (typeof columns !== "number") {
+    return columns;
+  }
+
+  return Array.from({ length: columns }, () => ({
+    id: randomId(),
+    width: DEFAULT_TABLE_COLUMN_WIDTH,
+  }));
+};
+
+export const newTableElement = (
+  opts: {
+    rows?: number | readonly TableRow[];
+    cols?: number;
+    columns?: readonly TableColumn[];
+    cells?: ExcalidrawTableElement["cells"];
+    headerRow?: boolean;
+    headerColumn?: boolean;
+    cellPadding?: number;
+    fontFamily?: FontFamilyValues;
+    fontSize?: number;
+    textAlign?: TextAlign;
+    verticalAlign?: VerticalAlign;
+    textColor?: string;
+    headerFill?: string | null;
+    dividerColor?: string;
+  } & ElementConstructorOpts,
+): NonDeleted<ExcalidrawTableElement> => {
+  const rows = newTableRows(opts.rows);
+  const columns = newTableColumns(opts.columns ?? opts.cols);
+  const width =
+    opts.width ?? columns.reduce((sum, column) => sum + column.width, 0);
+  const height = opts.height ?? rows.reduce((sum, row) => sum + row.height, 0);
+  const fontFamily = opts.fontFamily || DEFAULT_FONT_FAMILY;
+
+  return newElementWith(
+    {
+      ..._newElementBase<ExcalidrawTableElement>("table", {
+        ...opts,
+        width,
+        height,
+      }),
+      type: "table",
+      rows,
+      columns,
+      cells: opts.cells || [],
+      headerRow: opts.headerRow ?? true,
+      headerColumn: opts.headerColumn ?? false,
+      cellPadding: opts.cellPadding ?? DEFAULT_TABLE_CELL_PADDING,
+      textAlign: opts.textAlign ?? DEFAULT_TEXT_ALIGN,
+      verticalAlign: opts.verticalAlign ?? DEFAULT_VERTICAL_ALIGN,
+      fontFamily,
+      fontSize: opts.fontSize ?? DEFAULT_FONT_SIZE,
+      textColor: opts.textColor ?? opts.strokeColor ?? DEFAULT_ELEMENT_PROPS.strokeColor,
+      headerFill: opts.headerFill ?? null,
+      dividerColor:
+        opts.dividerColor ?? opts.strokeColor ?? DEFAULT_ELEMENT_PROPS.strokeColor,
+    },
+    {},
+  );
 };
 
 export const newFrameElement = (

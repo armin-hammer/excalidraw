@@ -19,10 +19,12 @@ import {
   THEME,
   distance,
   getFontString,
+  getLineHeight,
   isRTL,
   getVerticalOffset,
   invariant,
   applyDarkModeFilter,
+  isTransparent,
   isSafari,
 } from "@excalidraw/common";
 
@@ -67,6 +69,8 @@ import { getContainingFrame } from "./frame";
 import { getCornerRadius } from "./utils";
 
 import { ShapeCache } from "./shape";
+import { computeTableLayout } from "./tableLayout";
+import { wrapText } from "./textWrapping";
 
 import type {
   ExcalidrawElement,
@@ -78,6 +82,7 @@ import type {
   ExcalidrawFrameLikeElement,
   NonDeletedSceneElementsMap,
   ElementsMap,
+  ExcalidrawTableElement,
 } from "./types";
 
 import type { RoughCanvas } from "roughjs/bin/canvas";
@@ -384,6 +389,98 @@ const drawImagePlaceholder = (
   );
 };
 
+const getThemedColor = (
+  color: string,
+  theme: StaticCanvasRenderConfig["theme"],
+) => (theme === THEME.DARK ? applyDarkModeFilter(color) : color);
+
+const drawTableOnCanvas = (
+  element: ExcalidrawTableElement,
+  rc: RoughCanvas,
+  context: CanvasRenderingContext2D,
+  renderConfig: StaticCanvasRenderConfig,
+) => {
+  const layout = computeTableLayout(element);
+
+  if (!isTransparent(element.backgroundColor)) {
+    context.fillStyle = getThemedColor(
+      element.backgroundColor,
+      renderConfig.theme,
+    );
+    context.fillRect(0, 0, layout.frame.width, layout.frame.height);
+  }
+
+  const header = layout.rows[0];
+  if (element.headerRow && header && element.headerFill) {
+    context.fillStyle = getThemedColor(element.headerFill, renderConfig.theme);
+    context.fillRect(0, header.y, layout.frame.width, header.height);
+  }
+
+  for (const shape of ShapeCache.generateElementShape(element, renderConfig)) {
+    rc.draw(shape);
+  }
+
+  const font = getFontString({
+    fontFamily: element.fontFamily,
+    fontSize: element.fontSize,
+  });
+  const lineHeight = getLineHeight(element.fontFamily);
+  const lineHeightPx = getLineHeightInPx(element.fontSize, lineHeight);
+  const verticalOffset = getVerticalOffset(
+    element.fontFamily,
+    element.fontSize,
+    lineHeightPx,
+  );
+
+  context.save();
+  context.font = font;
+  context.fillStyle = getThemedColor(element.textColor, renderConfig.theme);
+  context.textAlign = element.textAlign as CanvasTextAlign;
+
+  for (const cell of layout.cells) {
+    if (!cell.text) {
+      continue;
+    }
+
+    const lines = wrapText(cell.text, font, cell.textBox.width).split("\n");
+    const textHeight = lines.length * lineHeightPx;
+    const horizontalOffset =
+      element.textAlign === "center"
+        ? cell.textBox.width / 2
+        : element.textAlign === "right"
+        ? cell.textBox.width
+        : 0;
+    const verticalBase =
+      element.verticalAlign === "middle"
+        ? (cell.textBox.height - textHeight) / 2
+        : element.verticalAlign === "bottom"
+        ? cell.textBox.height - textHeight
+        : 0;
+
+    context.save();
+    context.beginPath();
+    context.rect(
+      cell.textBox.x,
+      cell.textBox.y,
+      cell.textBox.width,
+      cell.textBox.height,
+    );
+    context.clip();
+
+    for (let index = 0; index < lines.length; index++) {
+      context.fillText(
+        lines[index],
+        cell.textBox.x + horizontalOffset,
+        cell.textBox.y + Math.max(0, verticalBase) + index * lineHeightPx + verticalOffset,
+      );
+    }
+
+    context.restore();
+  }
+
+  context.restore();
+};
+
 const drawElementOnCanvas = (
   element: NonDeletedExcalidrawElement,
   rc: RoughCanvas,
@@ -400,6 +497,10 @@ const drawElementOnCanvas = (
       context.lineCap = "round";
 
       rc.draw(ShapeCache.generateElementShape(element, renderConfig));
+      break;
+    }
+    case "table": {
+      drawTableOnCanvas(element, rc, context, renderConfig);
       break;
     }
     case "arrow":
@@ -881,6 +982,7 @@ export const renderElement = (
     case "rectangle":
     case "diamond":
     case "ellipse":
+    case "table":
     case "line":
     case "arrow":
     case "image":

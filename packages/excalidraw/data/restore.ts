@@ -685,7 +685,8 @@ export const restoreElement = (
         width:
           element.width ||
           columns.reduce((sum, column) => sum + column.width, 0),
-        height: element.height || rows.reduce((sum, row) => sum + row.height, 0),
+        height:
+          element.height || rows.reduce((sum, row) => sum + row.height, 0),
       };
 
       return restoreElementWithProperties(elementWithDimensions, {

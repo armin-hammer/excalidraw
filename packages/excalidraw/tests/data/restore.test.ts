@@ -13,6 +13,7 @@ import type {
   ExcalidrawElement,
   ExcalidrawFreeDrawElement,
   ExcalidrawLinearElement,
+  ExcalidrawTableElement,
   ExcalidrawTextElement,
 } from "@excalidraw/element/types";
 import type { NormalizedZoomValue } from "@excalidraw/excalidraw/types";
@@ -41,6 +42,32 @@ describe("restoreElements", () => {
 
     const restoredElements = restore.restoreElements(elements, null);
     expect(restoredElements.length).toBe(elements.length);
+  });
+
+  it("should restore table elements", () => {
+    const tableElement = API.createElement({
+      type: "table",
+    }) as ExcalidrawTableElement;
+    const rawTable = {
+      ...tableElement,
+      rows: [{ id: "row-a", height: 30 }],
+      columns: [{ id: "col-a", width: 90 }],
+      cells: [
+        { rowId: "row-a", colId: "col-a", text: "Cell" },
+        { rowId: "missing-row", colId: "col-a", text: "Dropped" },
+      ],
+      headerFill: undefined,
+    } as unknown as ExcalidrawTableElement;
+
+    const [restored] = restore.restoreElements([rawTable], null);
+
+    expect(restored).toMatchObject({
+      type: "table",
+      rows: [{ id: "row-a", height: 30 }],
+      columns: [{ id: "col-a", width: 90 }],
+      cells: [{ rowId: "row-a", colId: "col-a", text: "Cell" }],
+      headerFill: null,
+    });
   });
 
   it("when imported data state is null it should return an empty array of elements", () => {

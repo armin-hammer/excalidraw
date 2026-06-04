@@ -3,6 +3,7 @@ import { isFiniteNumber, isValidPoint, pointFrom } from "@excalidraw/math";
 import {
   type CombineBrandsIfNeeded,
   DEFAULT_FONT_FAMILY,
+  DEFAULT_FONT_SIZE,
   DEFAULT_TEXT_ALIGN,
   DEFAULT_VERTICAL_ALIGN,
   FONT_FAMILY,
@@ -23,6 +24,9 @@ import {
   calculateFixedPointForNonElbowArrowBinding,
   getNonDeletedElements,
   normalizeArrowhead,
+  DEFAULT_TABLE_CELL_PADDING,
+  DEFAULT_TABLE_COLUMN_WIDTH,
+  DEFAULT_TABLE_ROW_HEIGHT,
   isPointInElement,
   isValidPolygon,
   projectFixedPointOntoDiagonal,
@@ -641,6 +645,67 @@ export const restoreElement = (
     case "iframe":
     case "embeddable":
       return restoreElementWithProperties(element, {});
+    case "table": {
+      const rows =
+        Array.isArray(element.rows) && element.rows.length
+          ? element.rows.map((row) => ({
+              id: typeof row?.id === "string" ? row.id : randomId(),
+              height: isFiniteNumber(row?.height)
+                ? Math.max(1, row.height)
+                : DEFAULT_TABLE_ROW_HEIGHT,
+            }))
+          : [{ id: randomId(), height: DEFAULT_TABLE_ROW_HEIGHT }];
+      const columns =
+        Array.isArray(element.columns) && element.columns.length
+          ? element.columns.map((column) => ({
+              id: typeof column?.id === "string" ? column.id : randomId(),
+              width: isFiniteNumber(column?.width)
+                ? Math.max(1, column.width)
+                : DEFAULT_TABLE_COLUMN_WIDTH,
+            }))
+          : [{ id: randomId(), width: DEFAULT_TABLE_COLUMN_WIDTH }];
+      const rowIds = new Set(rows.map((row) => row.id));
+      const columnIds = new Set(columns.map((column) => column.id));
+      const cells = Array.isArray(element.cells)
+        ? element.cells
+            .filter(
+              (cell) =>
+                rowIds.has(cell?.rowId) &&
+                columnIds.has(cell?.colId) &&
+                typeof cell?.text === "string",
+            )
+            .map((cell) => ({
+              rowId: cell.rowId,
+              colId: cell.colId,
+              text: cell.text,
+            }))
+        : [];
+      const elementWithDimensions = {
+        ...element,
+        width:
+          element.width ||
+          columns.reduce((sum, column) => sum + column.width, 0),
+        height: element.height || rows.reduce((sum, row) => sum + row.height, 0),
+      };
+
+      return restoreElementWithProperties(elementWithDimensions, {
+        rows,
+        columns,
+        cells,
+        headerRow: element.headerRow ?? true,
+        headerColumn: element.headerColumn ?? false,
+        cellPadding: isFiniteNumber(element.cellPadding)
+          ? element.cellPadding
+          : DEFAULT_TABLE_CELL_PADDING,
+        textAlign: element.textAlign || DEFAULT_TEXT_ALIGN,
+        verticalAlign: element.verticalAlign || DEFAULT_VERTICAL_ALIGN,
+        fontFamily: element.fontFamily || DEFAULT_FONT_FAMILY,
+        fontSize: element.fontSize || DEFAULT_FONT_SIZE,
+        textColor: element.textColor || element.strokeColor,
+        headerFill: element.headerFill ?? null,
+        dividerColor: element.dividerColor || element.strokeColor,
+      });
+    }
     case "magicframe":
     case "frame":
       return restoreElementWithProperties(element, {

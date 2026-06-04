@@ -78,9 +78,9 @@ describe("table layout", () => {
     const layout = computeTableLayout(table);
 
     expect(computeTableLayout(table)).toBe(layout);
-    expect(computeTableLayout(newElementWith(table, { versionNonce: 1 }))).not.toBe(
-      layout,
-    );
+    expect(
+      computeTableLayout(newElementWith(table, { versionNonce: 1 })),
+    ).not.toBe(layout);
   });
 
   it("finds cells for interior and bottom-right edge points", () => {
@@ -117,9 +117,7 @@ describe("table layout", () => {
     const normalized = normalizeTableGeometry(table);
 
     expect(normalized.rows[0].height).toBeGreaterThan(table.rows[0].height);
-    expect(normalized.columns[0].width).toBeGreaterThan(
-      table.columns[0].width,
-    );
+    expect(normalized.columns[0].width).toBeGreaterThan(table.columns[0].width);
     expect(normalized.cellPadding).toBeGreaterThan(table.cellPadding);
     expect(normalized.width).toBe(normalized.columns[0].width);
     expect(normalized.height).toBe(normalized.rows[0].height);

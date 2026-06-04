@@ -189,7 +189,9 @@ export const DEFAULT_TABLE_ROW_HEIGHT = 40;
 export const DEFAULT_TABLE_COLUMN_WIDTH = 120;
 export const DEFAULT_TABLE_CELL_PADDING = 8;
 
-const newTableRows = (rows: number | readonly TableRow[] = DEFAULT_TABLE_ROW_COUNT) => {
+const newTableRows = (
+  rows: number | readonly TableRow[] = DEFAULT_TABLE_ROW_COUNT,
+) => {
   if (typeof rows !== "number") {
     return rows;
   }
@@ -256,10 +258,13 @@ export const newTableElement = (
       verticalAlign: opts.verticalAlign ?? DEFAULT_VERTICAL_ALIGN,
       fontFamily,
       fontSize: opts.fontSize ?? DEFAULT_FONT_SIZE,
-      textColor: opts.textColor ?? opts.strokeColor ?? DEFAULT_ELEMENT_PROPS.strokeColor,
+      textColor:
+        opts.textColor ?? opts.strokeColor ?? DEFAULT_ELEMENT_PROPS.strokeColor,
       headerFill: opts.headerFill ?? null,
       dividerColor:
-        opts.dividerColor ?? opts.strokeColor ?? DEFAULT_ELEMENT_PROPS.strokeColor,
+        opts.dividerColor ??
+        opts.strokeColor ??
+        DEFAULT_ELEMENT_PROPS.strokeColor,
     },
     {},
   );

@@ -34,50 +34,31 @@ export type TableLayout = Readonly<{
   }>;
 }>;
 
-type NormalizedSizedItem<T extends TableRow | TableColumn> = T extends TableRow
-  ? TableRow
-  : TableColumn;
-
-const normalizeSizedItems = <T extends TableRow | TableColumn>(
-  items: readonly T[],
-  sizeKey: T extends TableRow ? "height" : "width",
+const normalizeSizes = (
+  sizes: readonly number[],
   targetSize: number,
   minSize: number,
-): {
-  items: readonly NormalizedSizedItem<T>[];
-  size: number;
-} => {
-  const normalizedItems = items.map((item) => ({
-    ...item,
-    [sizeKey]: Math.max(minSize, item[sizeKey] as number),
-  })) as NormalizedSizedItem<T>[];
-
-  const minTotal = normalizedItems.length * minSize;
+): { sizes: readonly number[]; size: number } => {
+  const normalizedSizes = sizes.map((size) => Math.max(minSize, size));
+  const minTotal = normalizedSizes.length * minSize;
   let size = Math.max(targetSize, minTotal);
-  let total = normalizedItems.reduce(
-    (sum, item) => sum + (item[sizeKey] as number),
-    0,
-  );
+  let total = normalizedSizes.reduce((sum, itemSize) => sum + itemSize, 0);
 
-  if (!normalizedItems.length) {
-    return { items: normalizedItems, size: 0 };
+  if (!normalizedSizes.length) {
+    return { sizes: normalizedSizes, size: 0 };
   }
 
   let diff = size - total;
   if (diff >= 0) {
-    const last = normalizedItems[normalizedItems.length - 1];
-    normalizedItems[normalizedItems.length - 1] = {
-      ...last,
-      [sizeKey]: (last[sizeKey] as number) + diff,
-    } as NormalizedSizedItem<T>;
+    normalizedSizes[normalizedSizes.length - 1] += diff;
   } else {
-    for (let index = normalizedItems.length - 1; index >= 0 && diff < 0; index--) {
-      const item = normalizedItems[index];
-      const shrinkBy = Math.min((item[sizeKey] as number) - minSize, -diff);
-      normalizedItems[index] = {
-        ...item,
-        [sizeKey]: (item[sizeKey] as number) - shrinkBy,
-      } as NormalizedSizedItem<T>;
+    for (
+      let index = normalizedSizes.length - 1;
+      index >= 0 && diff < 0;
+      index--
+    ) {
+      const shrinkBy = Math.min(normalizedSizes[index] - minSize, -diff);
+      normalizedSizes[index] -= shrinkBy;
       diff += shrinkBy;
     }
     if (diff < 0) {
@@ -85,12 +66,9 @@ const normalizeSizedItems = <T extends TableRow | TableColumn>(
     }
   }
 
-  total = normalizedItems.reduce(
-    (sum, item) => sum + (item[sizeKey] as number),
-    0,
-  );
+  total = normalizedSizes.reduce((sum, itemSize) => sum + itemSize, 0);
 
-  return { items: normalizedItems, size: Math.max(size, total) };
+  return { sizes: normalizedSizes, size: Math.max(size, total) };
 };
 
 export const normalizeTableGeometry = (
@@ -99,22 +77,26 @@ export const normalizeTableGeometry = (
   ExcalidrawTableElement,
   "rows" | "columns" | "width" | "height" | "cellPadding"
 > => {
-  const rows = normalizeSizedItems(
-    element.rows,
-    "height",
+  const rows = normalizeSizes(
+    element.rows.map((row) => row.height),
     element.height,
     MIN_TABLE_ROW_HEIGHT,
   );
-  const columns = normalizeSizedItems(
-    element.columns,
-    "width",
+  const columns = normalizeSizes(
+    element.columns.map((column) => column.width),
     element.width,
     MIN_TABLE_COLUMN_WIDTH,
   );
 
   return {
-    rows: rows.items as readonly TableRow[],
-    columns: columns.items as readonly TableColumn[],
+    rows: element.rows.map((row, index) => ({
+      ...row,
+      height: rows.sizes[index],
+    })),
+    columns: element.columns.map((column, index) => ({
+      ...column,
+      width: columns.sizes[index],
+    })),
     width: columns.size,
     height: rows.size,
     cellPadding: Math.max(MIN_TABLE_CELL_PADDING, element.cellPadding),
@@ -241,8 +223,7 @@ export const getCellAtPoint = (
   }
 
   const cell = layout.cells.find((candidate) => {
-    const isLastColumn =
-      candidate.x + candidate.width === layout.frame.width;
+    const isLastColumn = candidate.x + candidate.width === layout.frame.width;
     const isLastRow = candidate.y + candidate.height === layout.frame.height;
 
     return (

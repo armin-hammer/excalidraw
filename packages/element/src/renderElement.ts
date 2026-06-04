@@ -471,7 +471,10 @@ const drawTableOnCanvas = (
       context.fillText(
         lines[index],
         cell.textBox.x + horizontalOffset,
-        cell.textBox.y + Math.max(0, verticalBase) + index * lineHeightPx + verticalOffset,
+        cell.textBox.y +
+          Math.max(0, verticalBase) +
+          index * lineHeightPx +
+          verticalOffset,
       );
     }
 

@@ -346,6 +346,7 @@
     "frame": "Frame",
     "magicframe": "Wireframe to code",
     "embeddable": "Web Embed",
+    "table": "Table",
     "selection": "Selection",
     "iframe": "IFrame"
   },

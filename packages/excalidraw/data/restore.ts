@@ -9,6 +9,10 @@ import {
   ROUNDNESS,
   DEFAULT_SIDEBAR,
   DEFAULT_ELEMENT_PROPS,
+  DEFAULT_TABLE_CELL_PADDING,
+  DEFAULT_TABLE_COL_WIDTH,
+  DEFAULT_TABLE_ROW_HEIGHT,
+  DEFAULT_FONT_SIZE,
   DEFAULT_GRID_SIZE,
   DEFAULT_GRID_STEP,
   randomId,
@@ -33,7 +37,7 @@ import {
   validateElbowPoints,
 } from "@excalidraw/element";
 import { LinearElementEditor } from "@excalidraw/element";
-import { bumpVersion } from "@excalidraw/element";
+import { bumpVersion, newTableElement } from "@excalidraw/element";
 import { getContainerElement } from "@excalidraw/element";
 import { detectLineHeight } from "@excalidraw/element";
 import {
@@ -176,6 +180,7 @@ export const AllowedExcalidrawActiveTools: Record<
   eraser: false,
   custom: true,
   frame: true,
+  table: true,
   embeddable: true,
   hand: true,
   laser: false,
@@ -646,6 +651,38 @@ export const restoreElement = (
       return restoreElementWithProperties(element, {
         name: element.name ?? null,
       });
+    case "table": {
+      const rows =
+        element.rows?.length > 0
+          ? element.rows.map((row) => ({
+              id: row.id ?? randomId(),
+              height: row.height ?? DEFAULT_TABLE_ROW_HEIGHT,
+            }))
+          : newTableElement({ x: 0, y: 0 }).rows;
+      const columns =
+        element.columns?.length > 0
+          ? element.columns.map((column) => ({
+              id: column.id ?? randomId(),
+              width: column.width ?? DEFAULT_TABLE_COL_WIDTH,
+            }))
+          : newTableElement({ x: 0, y: 0 }).columns;
+
+      return restoreElementWithProperties(element, {
+        rows,
+        columns,
+        cells: element.cells ?? [],
+        headerRow: element.headerRow ?? true,
+        headerColumn: element.headerColumn ?? false,
+        cellPadding: element.cellPadding ?? DEFAULT_TABLE_CELL_PADDING,
+        textAlign: element.textAlign ?? DEFAULT_TEXT_ALIGN,
+        verticalAlign: element.verticalAlign ?? DEFAULT_VERTICAL_ALIGN,
+        fontFamily: element.fontFamily ?? DEFAULT_FONT_FAMILY,
+        fontSize: element.fontSize ?? DEFAULT_FONT_SIZE,
+        textColor: element.textColor ?? DEFAULT_ELEMENT_PROPS.strokeColor,
+        headerFill: element.headerFill ?? null,
+        dividerColor: element.dividerColor ?? DEFAULT_ELEMENT_PROPS.strokeColor,
+      });
+    }
 
     // Don't use default case so as to catch a missing an element type case.
     // We also don't want to throw, but instead return void so we filter

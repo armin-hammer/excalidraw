@@ -325,6 +325,7 @@
     "link": "Add / Update link for a selected shape",
     "eraser": "Eraser",
     "frame": "Frame tool",
+    "table": "Table tool",
     "magicframe": "Wireframe to code",
     "embeddable": "Web Embed",
     "laser": "Laser pointer",
@@ -347,7 +348,8 @@
     "magicframe": "Wireframe to code",
     "embeddable": "Web Embed",
     "selection": "Selection",
-    "iframe": "IFrame"
+    "iframe": "IFrame",
+    "table": "Table"
   },
   "headings": {
     "canvasActions": "Canvas actions",

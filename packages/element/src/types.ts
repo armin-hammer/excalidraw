@@ -160,6 +160,28 @@ export type InitializedExcalidrawImageElement = MarkNonNullable<
   "fileId"
 >;
 
+export type TableRow = { id: string; height: number };
+export type TableColumn = { id: string; width: number };
+export type TableCell = { rowId: string; colId: string; text: string };
+
+export type ExcalidrawTableElement = _ExcalidrawElementBase &
+  Readonly<{
+    type: "table";
+    rows: readonly TableRow[];
+    columns: readonly TableColumn[];
+    cells: readonly TableCell[];
+    headerRow: boolean;
+    headerColumn: boolean;
+    cellPadding: number;
+    textAlign: TextAlign;
+    verticalAlign: VerticalAlign;
+    fontFamily: FontFamilyValues;
+    fontSize: number;
+    textColor: string;
+    headerFill: string | null;
+    dividerColor: string;
+  }>;
+
 export type ExcalidrawFrameElement = _ExcalidrawElementBase & {
   type: "frame";
   name: string | null;
@@ -196,6 +218,7 @@ export type ExcalidrawRectanguloidElement =
   | ExcalidrawIframeLikeElement
   | ExcalidrawFrameLikeElement
   | ExcalidrawEmbeddableElement
+  | ExcalidrawTableElement
   | ExcalidrawSelectionElement;
 
 /**
@@ -213,7 +236,8 @@ export type ExcalidrawElement =
   | ExcalidrawFrameElement
   | ExcalidrawMagicFrameElement
   | ExcalidrawIframeElement
-  | ExcalidrawEmbeddableElement;
+  | ExcalidrawEmbeddableElement
+  | ExcalidrawTableElement;
 
 export type ExcalidrawNonSelectionElement = Exclude<
   ExcalidrawElement,

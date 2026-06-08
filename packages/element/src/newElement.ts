@@ -2,9 +2,15 @@ import {
   DEFAULT_ELEMENT_PROPS,
   DEFAULT_FONT_FAMILY,
   DEFAULT_FONT_SIZE,
+  DEFAULT_TABLE_CELL_PADDING,
+  DEFAULT_TABLE_COL_WIDTH,
+  DEFAULT_TABLE_COLS,
+  DEFAULT_TABLE_ROW_HEIGHT,
+  DEFAULT_TABLE_ROWS,
   DEFAULT_TEXT_ALIGN,
   DEFAULT_VERTICAL_ALIGN,
   VERTICAL_ALIGN,
+  COLOR_PALETTE,
   randomInteger,
   randomId,
   getFontString,
@@ -48,6 +54,9 @@ import type {
   ExcalidrawArrowElement,
   ExcalidrawElbowArrowElement,
   ExcalidrawLineElement,
+  ExcalidrawTableElement,
+  TableRow,
+  TableColumn,
 } from "./types";
 
 export type ElementConstructorOpts = MarkOptional<
@@ -195,6 +204,84 @@ export const newFrameElement = (
   );
 
   return frameElement;
+};
+
+const createTableRows = (
+  count: number,
+  rowHeight: number = DEFAULT_TABLE_ROW_HEIGHT,
+): TableRow[] =>
+  Array.from({ length: count }, () => ({
+    id: randomId(),
+    height: rowHeight,
+  }));
+
+const createTableColumns = (
+  count: number,
+  colWidth: number = DEFAULT_TABLE_COL_WIDTH,
+): TableColumn[] =>
+  Array.from({ length: count }, () => ({
+    id: randomId(),
+    width: colWidth,
+  }));
+
+export const newTableElement = (
+  opts: {
+    rows?: number | readonly TableRow[];
+    cols?: number | readonly TableColumn[];
+    headerRow?: boolean;
+    headerColumn?: boolean;
+    cellPadding?: number;
+    textAlign?: TextAlign;
+    verticalAlign?: VerticalAlign;
+    fontFamily?: FontFamilyValues;
+    fontSize?: number;
+    textColor?: string;
+    headerFill?: string | null;
+    dividerColor?: string;
+  } & ElementConstructorOpts,
+): NonDeleted<ExcalidrawTableElement> => {
+  const rowCount =
+    typeof opts.rows === "number"
+      ? opts.rows
+      : opts.rows?.length ?? DEFAULT_TABLE_ROWS;
+  const colCount =
+    typeof opts.cols === "number"
+      ? opts.cols
+      : opts.cols?.length ?? DEFAULT_TABLE_COLS;
+
+  const rows =
+    typeof opts.rows === "number" || opts.rows === undefined
+      ? createTableRows(rowCount)
+      : [...opts.rows];
+  const columns =
+    typeof opts.cols === "number" || opts.cols === undefined
+      ? createTableColumns(colCount)
+      : [...opts.cols];
+
+  const width = opts.width ?? columns.reduce((sum, col) => sum + col.width, 0);
+  const height = opts.height ?? rows.reduce((sum, row) => sum + row.height, 0);
+
+  return {
+    ..._newElementBase<ExcalidrawTableElement>("table", {
+      ...opts,
+      width,
+      height,
+    }),
+    type: "table",
+    rows,
+    columns,
+    cells: [],
+    headerRow: opts.headerRow ?? true,
+    headerColumn: opts.headerColumn ?? false,
+    cellPadding: opts.cellPadding ?? DEFAULT_TABLE_CELL_PADDING,
+    textAlign: opts.textAlign ?? DEFAULT_TEXT_ALIGN,
+    verticalAlign: opts.verticalAlign ?? DEFAULT_VERTICAL_ALIGN,
+    fontFamily: opts.fontFamily ?? DEFAULT_FONT_FAMILY,
+    fontSize: opts.fontSize ?? DEFAULT_FONT_SIZE,
+    textColor: opts.textColor ?? DEFAULT_ELEMENT_PROPS.strokeColor,
+    headerFill: opts.headerFill ?? COLOR_PALETTE.gray[1],
+    dividerColor: opts.dividerColor ?? DEFAULT_ELEMENT_PROPS.strokeColor,
+  };
 };
 
 export const newMagicFrameElement = (

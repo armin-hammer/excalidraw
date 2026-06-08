@@ -29,6 +29,7 @@ import type {
   ExcalidrawLineElement,
   ExcalidrawFlowchartNodeElement,
   ExcalidrawLinearElementSubType,
+  ExcalidrawTableElement,
 } from "./types";
 
 export const isInitializedImageElement = (
@@ -67,6 +68,12 @@ export const isTextElement = (
   element: ExcalidrawElement | null,
 ): element is ExcalidrawTextElement => {
   return element != null && element.type === "text";
+};
+
+export const isTableElement = (
+  element: ExcalidrawElement | null,
+): element is ExcalidrawTableElement => {
+  return element != null && element.type === "table";
 };
 
 export const isFrameElement = (
@@ -261,6 +268,7 @@ export const isExcalidrawElement = (
     case "frame":
     case "magicframe":
     case "image":
+    case "table":
     case "selection": {
       return true;
     }
@@ -404,6 +412,7 @@ export const isEligibleFrameChildType = (type: ElementOrToolType) => {
     case "text":
     case "image":
     case "frame":
+    case "table":
     case "embeddable": {
       return true;
     }

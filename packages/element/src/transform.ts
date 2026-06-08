@@ -23,6 +23,7 @@ import {
   newArrowElement,
   newElement,
   newFrameElement,
+  newTableElement,
   newImageElement,
   newLinearElement,
   newMagicFrameElement,
@@ -54,6 +55,7 @@ import type {
   ExcalidrawLinearElement,
   ExcalidrawMagicFrameElement,
   ExcalidrawSelectionElement,
+  ExcalidrawTableElement,
   ExcalidrawTextElement,
   FileId,
   FontFamilyValues,
@@ -206,7 +208,12 @@ export type ExcalidrawElementSkeleton =
       type: "magicframe";
       children: readonly ExcalidrawElement["id"][];
       name?: string;
-    } & Partial<ExcalidrawMagicFrameElement>);
+    } & Partial<ExcalidrawMagicFrameElement>)
+  | ({
+      type: "table";
+      x: number;
+      y: number;
+    } & Partial<ExcalidrawTableElement>);
 
 const DEFAULT_LINEAR_ELEMENT_PROPS = {
   width: 100,
@@ -611,6 +618,14 @@ export const convertToExcalidrawElements = (
           x: 0,
           y: 0,
           ...element,
+        });
+        break;
+      }
+      case "table": {
+        excalidrawElement = newTableElement({
+          ...element,
+          x: element.x ?? 0,
+          y: element.y ?? 0,
         });
         break;
       }

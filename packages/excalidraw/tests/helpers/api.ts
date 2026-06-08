@@ -16,6 +16,7 @@ import {
   newImageElement,
   newLinearElement,
   newMagicFrameElement,
+  newTableElement,
   newTextElement,
 } from "@excalidraw/element";
 
@@ -362,6 +363,14 @@ export class API {
         break;
       case "magicframe":
         element = newMagicFrameElement({ ...base, width, height });
+        break;
+      case "table":
+        element = newTableElement({
+          ...base,
+          width,
+          height,
+          ...(rest as Partial<Parameters<typeof newTableElement>[0]>),
+        });
         break;
       default:
         assertNever(

@@ -350,9 +350,18 @@ export const SVG_DOCUMENT_PREAMBLE = `<?xml version="1.0" standalone="no"?>
 export const ENCRYPTION_KEY_BITS = 128;
 
 export const VERSIONS = {
-  excalidraw: 2,
+  excalidraw: 3,
   excalidrawLibrary: 2,
 } as const;
+
+export const DEFAULT_TABLE_COL_WIDTH = 120;
+export const DEFAULT_TABLE_ROW_HEIGHT = 40;
+export const DEFAULT_TABLE_CELL_PADDING = 8;
+export const DEFAULT_TABLE_ROWS = 3;
+export const DEFAULT_TABLE_COLS = 3;
+export const MIN_TABLE_COL_WIDTH = 30;
+export const MIN_TABLE_ROW_HEIGHT = 20;
+export const MIN_TABLE_CELL_PADDING = 4;
 
 export const BOUND_TEXT_PADDING = 5;
 export const ARROW_LABEL_WIDTH_FRACTION = 0.7;
@@ -462,6 +471,7 @@ export const TOOL_TYPE = {
   magicframe: "magicframe",
   embeddable: "embeddable",
   laser: "laser",
+  table: "table",
 } as const;
 
 export const EDITOR_LS_KEYS = {

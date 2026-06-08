@@ -89,6 +89,8 @@ export * from "./shape";
 export * from "./showSelectedShapeActions";
 export * from "./sizeHelpers";
 export * from "./sortElements";
+export * from "./tableLayout";
+export * from "./tableCells";
 export * from "./store";
 export * from "./textElement";
 export * from "./textMeasurements";

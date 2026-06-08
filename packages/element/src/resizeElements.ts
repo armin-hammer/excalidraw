@@ -57,8 +57,10 @@ import {
   isFreeDrawElement,
   isImageElement,
   isLinearElement,
+  isTableElement,
   isTextElement,
 } from "./typeChecks";
+import { resizeTableElementDimensions } from "./tableCells";
 
 import { isInGroup } from "./groups";
 
@@ -884,6 +886,17 @@ export const resizeSingleElement = (
       height: Math.abs(nextHeight),
       ...rescaledPoints,
     };
+
+    if (isTableElement(latestElement) && isTableElement(origElement)) {
+      updates = {
+        ...updates,
+        ...resizeTableElementDimensions(
+          latestElement,
+          Math.abs(nextWidth),
+          Math.abs(nextHeight),
+        ),
+      };
+    }
 
     if (isBindingElement(latestElement)) {
       if (latestElement.startBinding) {

@@ -123,6 +123,7 @@ import {
   LinearElementEditor,
   newElementWith,
   newFrameElement,
+  newTableElement,
   newFreeDrawElement,
   newEmbeddableElement,
   newMagicFrameElement,
@@ -141,7 +142,13 @@ import {
   isBindingElementType,
   isBoundToContainer,
   isFrameLikeElement,
+  isTableElement,
   isImageElement,
+  getCellAtPoint,
+  getTableLayout,
+  createTableCellTextElement,
+  setTableCellText,
+  scenePointToTableLocalPoint,
   isEmbeddableElement,
   isInitializedImageElement,
   isLinearElement,
@@ -270,6 +277,7 @@ import type {
   ExcalidrawGenericElement,
   ExcalidrawLinearElement,
   ExcalidrawTextElement,
+  ExcalidrawTableElement,
   NonDeleted,
   InitializedExcalidrawImageElement,
   ExcalidrawImageElement,
@@ -5832,6 +5840,110 @@ class App extends React.Component<AppProps, AppState> {
     updateElement(element.originalText, false);
   }
 
+  private handleTableCellWysiwyg = (
+    table: ExcalidrawTableElement,
+    cellRef: { rowId: string; colId: string },
+    textElement: ExcalidrawTextElement,
+  ) => {
+    const updateProxyText = (nextOriginalText: string) => {
+      this.scene.replaceAllElements(
+        this.scene.getElementsIncludingDeleted().map((element) => {
+          if (element.id === textElement.id && isTextElement(element)) {
+            return newElementWith(element, {
+              originalText: nextOriginalText,
+              text: nextOriginalText,
+              ...refreshTextDimensions(
+                element,
+                null,
+                this.scene.getNonDeletedElementsMap(),
+                nextOriginalText,
+              ),
+            });
+          }
+          return element;
+        }),
+      );
+    };
+
+    textWysiwyg({
+      id: textElement.id,
+      canvas: this.canvas,
+      getViewportCoords: (x, y) => {
+        const { x: viewportX, y: viewportY } = sceneCoordsToViewportCoords(
+          { sceneX: x, sceneY: y },
+          this.state,
+        );
+        return [
+          viewportX - this.state.offsetLeft,
+          viewportY - this.state.offsetTop,
+        ];
+      },
+      onChange: withBatchedUpdates((nextOriginalText) => {
+        updateProxyText(nextOriginalText);
+      }),
+      onSubmit: withBatchedUpdates(({ nextOriginalText }) => {
+        const latestTable = this.scene.getElement(table.id);
+        if (latestTable && isTableElement(latestTable)) {
+          const nextTable = setTableCellText(
+            latestTable,
+            cellRef,
+            nextOriginalText,
+          );
+          this.scene.mutateElement(latestTable, {
+            cells: nextTable.cells,
+          });
+        }
+
+        this.scene.replaceAllElements(
+          this.scene
+            .getElementsIncludingDeleted()
+            .filter((element) => element.id !== textElement.id),
+        );
+
+        this.store.scheduleCapture();
+        flushSync(() => {
+          this.setState({
+            newElement: null,
+            editingTextElement: null,
+            selectedElementIds: makeNextSelectedElementIds(
+              { [table.id]: true },
+              this.state,
+            ),
+          });
+        });
+        this.focusContainer();
+      }),
+      element: textElement,
+      excalidrawContainer: this.excalidrawContainerRef.current,
+      app: this,
+      autoSelect: !this.editorInterface.isTouchScreen,
+    });
+
+    this.setState({ editingTextElement: textElement });
+    updateProxyText(textElement.originalText);
+  };
+
+  private startTableCellEditing = (
+    table: ExcalidrawTableElement,
+    sceneX: number,
+    sceneY: number,
+  ) => {
+    const layout = getTableLayout(table);
+    const cellRef = getCellAtPoint(
+      table,
+      layout,
+      scenePointToTableLocalPoint(table, sceneX, sceneY),
+    );
+
+    if (!cellRef) {
+      return;
+    }
+
+    const textElement = createTableCellTextElement(table, cellRef);
+    this.insertNewElement(textElement);
+    this.handleTableCellWysiwyg(table, cellRef, textElement);
+  };
+
   private deselectElements() {
     this.setState({
       selectedElementIds: makeNextSelectedElementIds({}, this.state),
@@ -6567,6 +6679,11 @@ class App extends React.Component<AppProps, AppState> {
         this.setState({
           activeEmbeddable: { element: hitElement, state: "active" },
         });
+        return;
+      }
+
+      if (isTableElement(hitElement)) {
+        this.startTableCellEditing(hitElement, sceneX, sceneY);
         return;
       }
 
@@ -8090,6 +8207,8 @@ class App extends React.Component<AppProps, AppState> {
         pointerDownState,
         this.state.activeTool.type,
       );
+    } else if (this.state.activeTool.type === TOOL_TYPE.table) {
+      this.createTableElementOnPointerDown(pointerDownState);
     } else if (this.state.activeTool.type === "laser") {
       this.laserTrails.startPath(
         pointerDownState.lastCoords.x,
@@ -9565,6 +9684,51 @@ class App extends React.Component<AppProps, AppState> {
         newElement: element,
       });
     }
+  };
+
+  private createTableElementOnPointerDown = (
+    pointerDownState: PointerDownState,
+  ): void => {
+    const [gridX, gridY] = getGridPoint(
+      pointerDownState.origin.x,
+      pointerDownState.origin.y,
+      this.lastPointerDownEvent?.[KEYS.CTRL_OR_CMD]
+        ? null
+        : this.getEffectiveGridSize(),
+    );
+
+    const topLayerFrame = this.getTopLayerFrameAtSceneCoords({
+      x: gridX,
+      y: gridY,
+    });
+
+    const table = newTableElement({
+      x: gridX,
+      y: gridY,
+      strokeColor: this.state.currentItemStrokeColor,
+      backgroundColor: this.state.currentItemBackgroundColor,
+      fillStyle: this.state.currentItemFillStyle,
+      strokeWidth: this.state.currentItemStrokeWidth,
+      strokeStyle: this.state.currentItemStrokeStyle,
+      roughness: this.state.currentItemRoughness,
+      opacity: this.state.currentItemOpacity,
+      textColor: this.state.currentItemStrokeColor,
+      dividerColor: this.state.currentItemStrokeColor,
+      fontFamily: this.state.currentItemFontFamily,
+      fontSize: this.state.currentItemFontSize,
+      frameId: topLayerFrame ? topLayerFrame.id : null,
+    });
+
+    this.insertNewElement(table);
+    this.setState({
+      multiElement: null,
+      newElement: null,
+      selectedElementIds: makeNextSelectedElementIds(
+        { [table.id]: true },
+        this.state,
+      ),
+    });
+    this.setActiveTool({ type: this.state.preferredSelectionTool.type });
   };
 
   private createFrameElementOnPointerDown = (

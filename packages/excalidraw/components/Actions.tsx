@@ -70,6 +70,7 @@ import {
   EmbedIcon,
   extraToolsIcon,
   frameToolIcon,
+  tableToolIcon,
   mermaidLogoIcon,
   laserPointerToolIcon,
   MagicIcon,
@@ -1068,6 +1069,7 @@ export const ShapesSwitcher = ({
   ] as const;
 
   const frameToolSelected = activeTool.type === "frame";
+  const tableToolSelected = activeTool.type === "table";
   const laserToolSelected = activeTool.type === "laser";
   const lassoToolSelected =
     isFullStylesPanel &&
@@ -1187,6 +1189,7 @@ export const ShapesSwitcher = ({
           className={clsx("App-toolbar__extra-tools-trigger", {
             "App-toolbar__extra-tools-trigger--selected":
               frameToolSelected ||
+              tableToolSelected ||
               embeddableToolSelected ||
               lassoToolSelected ||
               // in collab we're already highlighting the laser button
@@ -1202,6 +1205,8 @@ export const ShapesSwitcher = ({
         >
           {frameToolSelected
             ? frameToolIcon
+            : tableToolSelected
+            ? tableToolIcon
             : embeddableToolSelected
             ? EmbedIcon
             : laserToolSelected && !app.props.isCollaborating
@@ -1223,6 +1228,14 @@ export const ShapesSwitcher = ({
             selected={frameToolSelected}
           >
             {t("toolBar.frame")}
+          </DropdownMenu.Item>
+          <DropdownMenu.Item
+            onSelect={() => app.setActiveTool({ type: "table" })}
+            icon={tableToolIcon}
+            data-testid="toolbar-table"
+            selected={tableToolSelected}
+          >
+            {t("toolBar.table")}
           </DropdownMenu.Item>
           <DropdownMenu.Item
             onSelect={() => app.setActiveTool({ type: "embeddable" })}

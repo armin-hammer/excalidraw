@@ -19,6 +19,7 @@ import {
   THEME,
   distance,
   getFontString,
+  getLineHeight,
   isRTL,
   getVerticalOffset,
   invariant,
@@ -63,6 +64,7 @@ import {
   isMagicFrameElement,
   isImageElement,
 } from "./typeChecks";
+import { getTableLayout } from "./tableLayout";
 import { getContainingFrame } from "./frame";
 import { getCornerRadius } from "./utils";
 
@@ -76,6 +78,7 @@ import type {
   ExcalidrawImageElement,
   ExcalidrawTextElementWithContainer,
   ExcalidrawFrameLikeElement,
+  ExcalidrawTableElement,
   NonDeletedSceneElementsMap,
   ElementsMap,
 } from "./types";
@@ -358,6 +361,142 @@ IMAGE_ERROR_PLACEHOLDER_IMG.src = `data:${MIME_TYPES.svg},${encodeURIComponent(
   `<svg viewBox="0 0 668 668" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2"><path d="M464 448H48c-26.51 0-48-21.49-48-48V112c0-26.51 21.49-48 48-48h416c26.51 0 48 21.49 48 48v288c0 26.51-21.49 48-48 48ZM112 120c-30.928 0-56 25.072-56 56s25.072 56 56 56 56-25.072 56-56-25.072-56-56-56ZM64 384h384V272l-87.515-87.515c-4.686-4.686-12.284-4.686-16.971 0L208 320l-55.515-55.515c-4.686-4.686-12.284-4.686-16.971 0L64 336v48Z" style="fill:#888;fill-rule:nonzero" transform="matrix(.81709 0 0 .81709 124.825 145.825)"/><path d="M256 8C119.034 8 8 119.033 8 256c0 136.967 111.034 248 248 248s248-111.034 248-248S392.967 8 256 8Zm130.108 117.892c65.448 65.448 70 165.481 20.677 235.637L150.47 105.216c70.204-49.356 170.226-44.735 235.638 20.676ZM125.892 386.108c-65.448-65.448-70-165.481-20.677-235.637L361.53 406.784c-70.203 49.356-170.226 44.736-235.638-20.676Z" style="fill:#888;fill-rule:nonzero" transform="matrix(.30366 0 0 .30366 506.822 60.065)"/></svg>`,
 )}`;
 
+const drawTableCellText = (
+  context: CanvasRenderingContext2D,
+  element: ExcalidrawTableElement,
+  renderConfig: StaticCanvasRenderConfig,
+  text: string,
+  textBox: { x: number; y: number; width: number; height: number },
+) => {
+  if (!text) {
+    return;
+  }
+
+  const rtl = isRTL(text);
+  const shouldTemporarilyAttach = rtl && !context.canvas.isConnected;
+  if (shouldTemporarilyAttach) {
+    document.body.appendChild(context.canvas);
+  }
+
+  context.save();
+  context.font = getFontString({
+    fontFamily: element.fontFamily,
+    fontSize: element.fontSize,
+  });
+  context.fillStyle =
+    renderConfig.theme === THEME.DARK
+      ? applyDarkModeFilter(element.textColor)
+      : element.textColor;
+  context.textAlign = element.textAlign as CanvasTextAlign;
+
+  const lineHeightPx = getLineHeightInPx(
+    element.fontSize,
+    getLineHeight(element.fontFamily),
+  );
+  const lines = text.replace(/\r\n?/g, "\n").split("\n");
+  const textHeight = lines.length * lineHeightPx;
+  const verticalOffset = getVerticalOffset(
+    element.fontFamily,
+    element.fontSize,
+    lineHeightPx,
+  );
+
+  let textY = textBox.y;
+  if (element.verticalAlign === "middle") {
+    textY += (textBox.height - textHeight) / 2;
+  } else if (element.verticalAlign === "bottom") {
+    textY += textBox.height - textHeight;
+  }
+
+  const horizontalOffset =
+    element.textAlign === "center"
+      ? textBox.x + textBox.width / 2
+      : element.textAlign === "right"
+      ? textBox.x + textBox.width
+      : textBox.x;
+
+  for (let index = 0; index < lines.length; index++) {
+    context.fillText(
+      lines[index],
+      horizontalOffset,
+      textY + index * lineHeightPx + verticalOffset,
+    );
+  }
+
+  context.restore();
+
+  if (shouldTemporarilyAttach) {
+    context.canvas.remove();
+  }
+};
+
+const drawTableOnCanvas = (
+  element: ExcalidrawTableElement,
+  context: CanvasRenderingContext2D,
+  renderConfig: StaticCanvasRenderConfig,
+) => {
+  const layout = getTableLayout(element);
+  const cellTextMap = new Map<string, string>();
+  for (const cell of element.cells) {
+    cellTextMap.set(`${cell.rowId}:${cell.colId}`, cell.text);
+  }
+
+  if (element.backgroundColor && element.backgroundColor !== "transparent") {
+    context.fillStyle =
+      renderConfig.theme === THEME.DARK
+        ? applyDarkModeFilter(element.backgroundColor)
+        : element.backgroundColor;
+    context.fillRect(0, 0, element.width, element.height);
+  }
+
+  if (element.headerRow && element.headerFill) {
+    const headerRow = layout.rows[0];
+    if (headerRow) {
+      context.fillStyle =
+        renderConfig.theme === THEME.DARK
+          ? applyDarkModeFilter(element.headerFill)
+          : element.headerFill;
+      context.fillRect(0, headerRow.y, element.width, headerRow.height);
+    }
+  }
+
+  if (element.headerColumn && element.headerFill) {
+    const headerColumn = layout.columns[0];
+    if (headerColumn) {
+      context.fillStyle =
+        renderConfig.theme === THEME.DARK
+          ? applyDarkModeFilter(element.headerFill)
+          : element.headerFill;
+      context.fillRect(headerColumn.x, 0, headerColumn.width, element.height);
+    }
+  }
+
+  context.strokeStyle =
+    renderConfig.theme === THEME.DARK
+      ? applyDarkModeFilter(element.dividerColor)
+      : element.dividerColor;
+  context.lineWidth = element.strokeWidth;
+
+  for (const line of layout.dividers.horizontal) {
+    context.beginPath();
+    context.moveTo(line.x1, line.y1);
+    context.lineTo(line.x2, line.y2);
+    context.stroke();
+  }
+
+  for (const line of layout.dividers.vertical) {
+    context.beginPath();
+    context.moveTo(line.x1, line.y1);
+    context.lineTo(line.x2, line.y2);
+    context.stroke();
+  }
+
+  for (const cell of layout.cells) {
+    const text = cellTextMap.get(`${cell.rowId}:${cell.colId}`) ?? "";
+    drawTableCellText(context, element, renderConfig, text, cell.textBox);
+  }
+};
+
 const drawImagePlaceholder = (
   element: ExcalidrawImageElement,
   context: CanvasRenderingContext2D,
@@ -433,6 +572,10 @@ const drawElementOnCanvas = (
       }
 
       context.restore();
+      break;
+    }
+    case "table": {
+      drawTableOnCanvas(element, context, renderConfig);
       break;
     }
     case "image": {
@@ -884,6 +1027,7 @@ export const renderElement = (
     case "line":
     case "arrow":
     case "image":
+    case "table":
     case "text":
     case "iframe":
     case "embeddable": {

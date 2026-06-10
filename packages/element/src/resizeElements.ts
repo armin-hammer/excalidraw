@@ -47,6 +47,7 @@ import {
   getApproxMinLineWidth,
   getApproxMinLineHeight,
 } from "./textMeasurements";
+import { computeTableLayout } from "./tableLayout";
 import { wrapText } from "./textWrapping";
 import {
   isArrowElement,
@@ -888,6 +889,7 @@ export const resizeSingleElement = (
     };
 
     if (isTableElement(latestElement) && isTableElement(origElement)) {
+      const layout = computeTableLayout(origElement);
       const widthScale =
         origElement.width === 0 ? 1 : Math.abs(nextWidth) / origElement.width;
       const heightScale =
@@ -897,11 +899,11 @@ export const resizeSingleElement = (
 
       updates = {
         ...updates,
-        columns: origElement.columns.map((column) => ({
+        columns: layout.columns.map((column) => ({
           ...column,
           width: column.width * widthScale,
         })),
-        rows: origElement.rows.map((row) => ({
+        rows: layout.rows.map((row) => ({
           ...row,
           height: row.height * heightScale,
         })),

@@ -25,6 +25,7 @@ import {
   isElbowArrow,
   isFrameLikeElement,
   isImageElement,
+  isTableElement,
   isTextElement,
 } from "./typeChecks";
 
@@ -337,6 +338,19 @@ export const dragNewElement = ({
       };
     }
 
+    const tableDimensions = isTableElement(newElement)
+      ? {
+          columns: newElement.columns.map((column) => ({
+            ...column,
+            width: width / newElement.columns.length,
+          })),
+          rows: newElement.rows.map((row) => ({
+            ...row,
+            height: height / newElement.rows.length,
+          })),
+        }
+      : null;
+
     scene.mutateElement(
       newElement,
       {
@@ -346,6 +360,7 @@ export const dragNewElement = ({
         height,
         ...textAutoResize,
         ...imageInitialDimension,
+        ...tableDimensions,
       },
       { informMutation, isDragging: false },
     );

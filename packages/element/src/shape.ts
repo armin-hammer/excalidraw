@@ -256,6 +256,7 @@ export const generateRoughOptions = (
       return options;
     }
     case "arrow":
+    case "table":
       return options;
     default: {
       throw new Error(`Unimplemented type ${element.type}`);
@@ -987,6 +988,7 @@ const _generateElementShape = (
     }
     case "frame":
     case "magicframe":
+    case "table":
     case "text":
     case "image": {
       const shape: ElementShapes[typeof element.type] = null;
@@ -1082,6 +1084,7 @@ export const getElementShape = <Point extends GlobalPoint | LocalPoint>(
     case "diamond":
     case "frame":
     case "magicframe":
+    case "table":
     case "embeddable":
     case "image":
     case "iframe":

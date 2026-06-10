@@ -10,6 +10,9 @@ import {
   getVerticalOffset,
   applyDarkModeFilter,
   MIME_TYPES,
+  getLineHeight,
+  getFontString,
+  isTransparent,
 } from "@excalidraw/common";
 import { normalizeLink, toValidURL } from "@excalidraw/common";
 import { hashString } from "@excalidraw/element";
@@ -21,6 +24,7 @@ import {
 import { LinearElementEditor } from "@excalidraw/element";
 import { getBoundTextElement, getContainerElement } from "@excalidraw/element";
 import { getLineHeightInPx } from "@excalidraw/element";
+import { computeTableLayout, wrapText } from "@excalidraw/element";
 import {
   isArrowElement,
   isIframeLikeElement,
@@ -597,6 +601,154 @@ const renderElementToSvg = (
       break;
     }
     // frames are not rendered and only acts as a container
+    case "table": {
+      const node = svgRoot.ownerDocument.createElementNS(SVG_NS, "g");
+      if (opacity !== 1) {
+        node.setAttribute("stroke-opacity", `${opacity}`);
+        node.setAttribute("fill-opacity", `${opacity}`);
+      }
+
+      node.setAttribute(
+        "transform",
+        `translate(${offsetX || 0} ${
+          offsetY || 0
+        }) rotate(${degree} ${cx} ${cy})`,
+      );
+
+      const layout = computeTableLayout(element);
+      const tableColor = (color: string) =>
+        renderConfig.theme === THEME.DARK ? applyDarkModeFilter(color) : color;
+
+      if (!isTransparent(element.backgroundColor)) {
+        const bodyFill = svgRoot.ownerDocument.createElementNS(SVG_NS, "rect");
+        bodyFill.setAttribute("x", "0");
+        bodyFill.setAttribute("y", "0");
+        bodyFill.setAttribute("width", `${element.width}`);
+        bodyFill.setAttribute("height", `${element.height}`);
+        bodyFill.setAttribute("fill", tableColor(element.backgroundColor));
+        node.appendChild(bodyFill);
+      }
+
+      if (element.headerRow && element.headerFill && layout.rows[0]) {
+        const headerFill = svgRoot.ownerDocument.createElementNS(
+          SVG_NS,
+          "rect",
+        );
+        headerFill.setAttribute("x", "0");
+        headerFill.setAttribute("y", `${layout.rows[0].y}`);
+        headerFill.setAttribute("width", `${element.width}`);
+        headerFill.setAttribute("height", `${layout.rows[0].height}`);
+        headerFill.setAttribute("fill", tableColor(element.headerFill));
+        node.appendChild(headerFill);
+      }
+
+      const border = svgRoot.ownerDocument.createElementNS(SVG_NS, "rect");
+      border.setAttribute("x", "0");
+      border.setAttribute("y", "0");
+      border.setAttribute("width", `${element.width}`);
+      border.setAttribute("height", `${element.height}`);
+      border.setAttribute("fill", "none");
+      border.setAttribute("stroke", tableColor(element.dividerColor));
+      border.setAttribute("stroke-width", `${element.strokeWidth}`);
+      node.appendChild(border);
+
+      for (const x of layout.columnDividers) {
+        const line = svgRoot.ownerDocument.createElementNS(SVG_NS, "line");
+        line.setAttribute("x1", `${x}`);
+        line.setAttribute("y1", "0");
+        line.setAttribute("x2", `${x}`);
+        line.setAttribute("y2", `${element.height}`);
+        line.setAttribute("stroke", tableColor(element.dividerColor));
+        line.setAttribute("stroke-width", `${element.strokeWidth}`);
+        node.appendChild(line);
+      }
+
+      for (const y of layout.rowDividers) {
+        const line = svgRoot.ownerDocument.createElementNS(SVG_NS, "line");
+        line.setAttribute("x1", "0");
+        line.setAttribute("y1", `${y}`);
+        line.setAttribute("x2", `${element.width}`);
+        line.setAttribute("y2", `${y}`);
+        line.setAttribute("stroke", tableColor(element.dividerColor));
+        line.setAttribute("stroke-width", `${element.strokeWidth}`);
+        node.appendChild(line);
+      }
+
+      const lineHeight = getLineHeight(element.fontFamily);
+      const lineHeightPx = getLineHeightInPx(element.fontSize, lineHeight);
+      const verticalOffset = getVerticalOffset(
+        element.fontFamily,
+        element.fontSize,
+        lineHeightPx,
+      );
+      const textAnchor =
+        element.textAlign === "center"
+          ? "middle"
+          : element.textAlign === "right"
+          ? "end"
+          : "start";
+
+      for (const cell of layout.cells) {
+        if (!cell.text) {
+          continue;
+        }
+
+        const lines = wrapText(
+          cell.text,
+          getFontString({
+            fontFamily: element.fontFamily,
+            fontSize: element.fontSize,
+          }),
+          cell.textBox.width,
+        )
+          .replace(/\r\n?/g, "\n")
+          .split("\n");
+        const textHeight = lines.length * lineHeightPx;
+        const horizontalOffset =
+          element.textAlign === "center"
+            ? cell.textBox.x + cell.textBox.width / 2
+            : element.textAlign === "right"
+            ? cell.textBox.x + cell.textBox.width
+            : cell.textBox.x;
+        const verticalStart =
+          element.verticalAlign === "middle"
+            ? cell.textBox.y + (cell.textBox.height - textHeight) / 2
+            : element.verticalAlign === "bottom"
+            ? cell.textBox.y + cell.textBox.height - textHeight
+            : cell.textBox.y;
+
+        for (let index = 0; index < lines.length; index++) {
+          const text = svgRoot.ownerDocument.createElementNS(SVG_NS, "text");
+          text.textContent = lines[index];
+          text.setAttribute("x", `${horizontalOffset}`);
+          text.setAttribute(
+            "y",
+            `${verticalStart + index * lineHeightPx + verticalOffset}`,
+          );
+          text.setAttribute(
+            "font-family",
+            getFontFamilyString({ fontFamily: element.fontFamily }),
+          );
+          text.setAttribute("font-size", `${element.fontSize}px`);
+          text.setAttribute("fill", tableColor(element.textColor));
+          text.setAttribute("text-anchor", textAnchor);
+          text.setAttribute("style", "white-space: pre;");
+          text.setAttribute("dominant-baseline", "alphabetic");
+          node.appendChild(text);
+        }
+      }
+
+      const g = maybeWrapNodesInFrameClipPath(
+        element,
+        root,
+        [node],
+        renderConfig.frameRendering,
+        elementsMap,
+      );
+
+      addToRoot(g || node, element);
+      break;
+    }
     case "frame":
     case "magicframe": {
       if (

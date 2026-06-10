@@ -29,6 +29,7 @@ import type {
   ExcalidrawLineElement,
   ExcalidrawFlowchartNodeElement,
   ExcalidrawLinearElementSubType,
+  ExcalidrawTableElement,
 } from "./types";
 
 export const isInitializedImageElement = (
@@ -88,6 +89,12 @@ export const isFrameLikeElement = (
     element != null &&
     (element.type === "frame" || element.type === "magicframe")
   );
+};
+
+export const isTableElement = (
+  element: ExcalidrawElement | null,
+): element is ExcalidrawTableElement => {
+  return element != null && element.type === "table";
 };
 
 export const isFreeDrawElement = (
@@ -188,6 +195,7 @@ export const isBindableElement = (
       element.type === "iframe" ||
       element.type === "embeddable" ||
       element.type === "frame" ||
+      element.type === "table" ||
       element.type === "magicframe" ||
       (element.type === "text" && !element.containerId))
   );
@@ -204,6 +212,7 @@ export const isRectanguloidElement = (
       element.type === "iframe" ||
       element.type === "embeddable" ||
       element.type === "frame" ||
+      element.type === "table" ||
       element.type === "magicframe" ||
       (element.type === "text" && !element.containerId))
   );
@@ -222,6 +231,7 @@ export const isRectangularElement = (
       element.type === "iframe" ||
       element.type === "embeddable" ||
       element.type === "frame" ||
+      element.type === "table" ||
       element.type === "magicframe" ||
       element.type === "freedraw")
   );
@@ -259,6 +269,7 @@ export const isExcalidrawElement = (
     case "freedraw":
     case "line":
     case "frame":
+    case "table":
     case "magicframe":
     case "image":
     case "selection": {
@@ -404,6 +415,7 @@ export const isEligibleFrameChildType = (type: ElementOrToolType) => {
     case "text":
     case "image":
     case "frame":
+    case "table":
     case "embeddable": {
       return true;
     }

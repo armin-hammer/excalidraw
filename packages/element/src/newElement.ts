@@ -3,6 +3,11 @@ import {
   DEFAULT_FONT_FAMILY,
   DEFAULT_FONT_SIZE,
   DEFAULT_TEXT_ALIGN,
+  DEFAULT_TABLE_CELL_PADDING,
+  DEFAULT_TABLE_COLUMN_COUNT,
+  DEFAULT_TABLE_COLUMN_WIDTH,
+  DEFAULT_TABLE_ROW_COUNT,
+  DEFAULT_TABLE_ROW_HEIGHT,
   DEFAULT_VERTICAL_ALIGN,
   VERTICAL_ALIGN,
   randomInteger,
@@ -48,6 +53,10 @@ import type {
   ExcalidrawArrowElement,
   ExcalidrawElbowArrowElement,
   ExcalidrawLineElement,
+  ExcalidrawTableElement,
+  TableCell,
+  TableColumn,
+  TableRow,
 } from "./types";
 
 export type ElementConstructorOpts = MarkOptional<
@@ -212,6 +221,125 @@ export const newMagicFrameElement = (
   );
 
   return frameElement;
+};
+
+type TableConstructorOpts = {
+  rows?: number | readonly TableRow[];
+  columns?: number | readonly TableColumn[];
+  cells?: readonly TableCell[];
+  headerRow?: boolean;
+  headerColumn?: boolean;
+  cellPadding?: number;
+  textAlign?: TextAlign;
+  verticalAlign?: VerticalAlign;
+  fontFamily?: FontFamilyValues;
+  fontSize?: number;
+  textColor?: string;
+  headerFill?: string | null;
+  dividerColor?: string;
+} & ElementConstructorOpts;
+
+const initializeTableRows = (
+  rows: TableConstructorOpts["rows"],
+  height: number | undefined,
+): readonly TableRow[] => {
+  if (Array.isArray(rows)) {
+    return rows.map((row) => ({
+      id: row.id || randomId(),
+      height: row.height || DEFAULT_TABLE_ROW_HEIGHT,
+    }));
+  }
+
+  const rowCount = Math.max(1, rows || DEFAULT_TABLE_ROW_COUNT);
+  const rowHeight = height ? height / rowCount : DEFAULT_TABLE_ROW_HEIGHT;
+
+  return Array.from({ length: rowCount }, () => ({
+    id: randomId(),
+    height: rowHeight,
+  }));
+};
+
+const initializeTableColumns = (
+  columns: TableConstructorOpts["columns"],
+  width: number | undefined,
+): readonly TableColumn[] => {
+  if (Array.isArray(columns)) {
+    return columns.map((column) => ({
+      id: column.id || randomId(),
+      width: column.width || DEFAULT_TABLE_COLUMN_WIDTH,
+    }));
+  }
+
+  const columnCount = Math.max(1, columns || DEFAULT_TABLE_COLUMN_COUNT);
+  const columnWidth = width ? width / columnCount : DEFAULT_TABLE_COLUMN_WIDTH;
+
+  return Array.from({ length: columnCount }, () => ({
+    id: randomId(),
+    width: columnWidth,
+  }));
+};
+
+const initializeTableCells = (
+  rows: readonly TableRow[],
+  columns: readonly TableColumn[],
+  cells: readonly TableCell[] | undefined,
+): readonly TableCell[] => {
+  const cellsByKey = new Map(
+    (cells || []).map((cell) => [`${cell.rowId}:${cell.colId}`, cell]),
+  );
+
+  return rows.flatMap((row) =>
+    columns.map((column) => {
+      const cell = cellsByKey.get(`${row.id}:${column.id}`);
+      return {
+        rowId: row.id,
+        colId: column.id,
+        text: cell?.text || "",
+      };
+    }),
+  );
+};
+
+export const newTableElement = (
+  opts: TableConstructorOpts,
+): NonDeleted<ExcalidrawTableElement> => {
+  const rows = initializeTableRows(opts.rows, opts.height);
+  const columns = initializeTableColumns(opts.columns, opts.width);
+  const width =
+    opts.width ?? columns.reduce((sum, column) => sum + column.width, 0);
+  const height = opts.height ?? rows.reduce((sum, row) => sum + row.height, 0);
+
+  return newElementWith(
+    {
+      ..._newElementBase<ExcalidrawTableElement>("table", {
+        ...opts,
+        width,
+        height,
+        backgroundColor: opts.backgroundColor ?? "#ffffff",
+        fillStyle: "solid",
+        roughness: 0,
+      }),
+      type: "table",
+      rows,
+      columns,
+      cells: initializeTableCells(rows, columns, opts.cells),
+      headerRow: opts.headerRow ?? true,
+      headerColumn: opts.headerColumn ?? false,
+      cellPadding: opts.cellPadding ?? DEFAULT_TABLE_CELL_PADDING,
+      textAlign: opts.textAlign ?? DEFAULT_TEXT_ALIGN,
+      verticalAlign: opts.verticalAlign ?? DEFAULT_VERTICAL_ALIGN,
+      fontFamily: opts.fontFamily ?? DEFAULT_FONT_FAMILY,
+      fontSize: opts.fontSize ?? DEFAULT_FONT_SIZE,
+      textColor:
+        opts.textColor ?? opts.strokeColor ?? DEFAULT_ELEMENT_PROPS.strokeColor,
+      headerFill: opts.headerFill ?? "#f1f3f5",
+      dividerColor:
+        opts.dividerColor ??
+        opts.strokeColor ??
+        DEFAULT_ELEMENT_PROPS.strokeColor,
+    },
+    {},
+  );
 };
 
 /** computes element x/y offset based on textAlign/verticalAlign */

@@ -19,10 +19,12 @@ import {
   THEME,
   distance,
   getFontString,
+  getLineHeight,
   isRTL,
   getVerticalOffset,
   invariant,
   applyDarkModeFilter,
+  isTransparent,
   isSafari,
 } from "@excalidraw/common";
 
@@ -53,6 +55,8 @@ import {
   getBoundTextMaxWidth,
 } from "./textElement";
 import { getLineHeightInPx } from "./textMeasurements";
+import { computeTableLayout } from "./tableLayout";
+import { wrapText } from "./textWrapping";
 import {
   isTextElement,
   isLinearElement,
@@ -62,6 +66,7 @@ import {
   hasBoundTextElement,
   isMagicFrameElement,
   isImageElement,
+  isTableElement,
 } from "./typeChecks";
 import { getContainingFrame } from "./frame";
 import { getCornerRadius } from "./utils";
@@ -384,6 +389,108 @@ const drawImagePlaceholder = (
   );
 };
 
+const getTableColor = (
+  color: string,
+  theme: StaticCanvasRenderConfig["theme"],
+) => (theme === THEME.DARK ? applyDarkModeFilter(color) : color);
+
+const drawTableElement = (
+  element: Extract<NonDeletedExcalidrawElement, { type: "table" }>,
+  context: CanvasRenderingContext2D,
+  renderConfig: StaticCanvasRenderConfig,
+) => {
+  const layout = computeTableLayout(element);
+
+  context.save();
+
+  if (!isTransparent(element.backgroundColor)) {
+    context.fillStyle = getTableColor(element.backgroundColor, renderConfig.theme);
+    context.fillRect(0, 0, element.width, element.height);
+  }
+
+  if (element.headerRow && element.headerFill) {
+    const headerRow = layout.rows[0];
+    if (headerRow) {
+      context.fillStyle = getTableColor(element.headerFill, renderConfig.theme);
+      context.fillRect(0, headerRow.y, element.width, headerRow.height);
+    }
+  }
+
+  context.lineWidth = element.strokeWidth;
+  context.strokeStyle = getTableColor(element.dividerColor, renderConfig.theme);
+  context.beginPath();
+  context.rect(0, 0, element.width, element.height);
+  for (const x of layout.columnDividers) {
+    context.moveTo(x, 0);
+    context.lineTo(x, element.height);
+  }
+  for (const y of layout.rowDividers) {
+    context.moveTo(0, y);
+    context.lineTo(element.width, y);
+  }
+  context.stroke();
+
+  context.font = getFontString({
+    fontFamily: element.fontFamily,
+    fontSize: element.fontSize,
+  });
+  context.fillStyle = getTableColor(element.textColor, renderConfig.theme);
+  context.textAlign = element.textAlign as CanvasTextAlign;
+  context.textBaseline = "alphabetic";
+  const lineHeight = getLineHeight(element.fontFamily);
+  const lineHeightPx = getLineHeightInPx(element.fontSize, lineHeight);
+  const verticalOffset = getVerticalOffset(
+    element.fontFamily,
+    element.fontSize,
+    lineHeightPx,
+  );
+
+  for (const cell of layout.cells) {
+    if (!cell.text) {
+      continue;
+    }
+
+    const lines = wrapText(
+      cell.text,
+      getFontString({
+        fontFamily: element.fontFamily,
+        fontSize: element.fontSize,
+      }),
+      cell.textBox.width,
+    )
+      .replace(/\r\n?/g, "\n")
+      .split("\n");
+    const textHeight = lines.length * lineHeightPx;
+    const horizontalOffset =
+      element.textAlign === "center"
+        ? cell.textBox.x + cell.textBox.width / 2
+        : element.textAlign === "right"
+        ? cell.textBox.x + cell.textBox.width
+        : cell.textBox.x;
+    const verticalStart =
+      element.verticalAlign === "middle"
+        ? cell.textBox.y + (cell.textBox.height - textHeight) / 2
+        : element.verticalAlign === "bottom"
+        ? cell.textBox.y + cell.textBox.height - textHeight
+        : cell.textBox.y;
+
+    context.save();
+    context.beginPath();
+    context.rect(cell.textBox.x, cell.textBox.y, cell.textBox.width, cell.textBox.height);
+    context.clip();
+    for (let index = 0; index < lines.length; index++) {
+      context.fillText(
+        lines[index],
+        horizontalOffset,
+        verticalStart + index * lineHeightPx + verticalOffset,
+      );
+    }
+    context.restore();
+  }
+
+  context.restore();
+};
+
 const drawElementOnCanvas = (
   element: NonDeletedExcalidrawElement,
   rc: RoughCanvas,
@@ -433,6 +540,10 @@ const drawElementOnCanvas = (
       }
 
       context.restore();
+      break;
+    }
+    case "table": {
+      drawTableElement(element, context, renderConfig);
       break;
     }
     case "image": {
@@ -593,6 +704,8 @@ const drawElementOnCanvas = (
         if (shouldTemporarilyAttach) {
           context.canvas.remove();
         }
+      } else if (isTableElement(element)) {
+        drawTableElement(element, context, renderConfig);
       } else {
         throw new Error(`Unimplemented type ${element.type}`);
       }
@@ -884,6 +997,7 @@ export const renderElement = (
     case "line":
     case "arrow":
     case "image":
+    case "table":
     case "text":
     case "iframe":
     case "embeddable": {

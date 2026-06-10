@@ -214,6 +214,13 @@ export const DEFAULT_FONT_SIZE = 20;
 export const DEFAULT_FONT_FAMILY: FontFamilyValues = FONT_FAMILY.Excalifont;
 export const DEFAULT_TEXT_ALIGN = "left";
 export const DEFAULT_VERTICAL_ALIGN = "top";
+export const DEFAULT_TABLE_ROW_COUNT = 3;
+export const DEFAULT_TABLE_COLUMN_COUNT = 3;
+export const DEFAULT_TABLE_ROW_HEIGHT = 48;
+export const DEFAULT_TABLE_COLUMN_WIDTH = 120;
+export const DEFAULT_TABLE_CELL_PADDING = 12;
+export const MIN_TABLE_ROW_HEIGHT = 28;
+export const MIN_TABLE_COLUMN_WIDTH = 48;
 export const DEFAULT_VERSION = "{version}";
 export const DEFAULT_TRANSFORM_HANDLE_SPACING = 2;
 
@@ -458,6 +465,7 @@ export const TOOL_TYPE = {
   image: "image",
   eraser: "eraser",
   hand: "hand",
+  table: "table",
   frame: "frame",
   magicframe: "magicframe",
   embeddable: "embeddable",

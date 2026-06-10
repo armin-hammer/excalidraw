@@ -173,6 +173,10 @@ export const hitElementItself = ({
     return false;
   }
 
+  if (element.type === "table") {
+    return true;
+  }
+
   // Do the precise (and relatively costly) hit test
   const hitElement = (
     overrideShouldTestInside ? true : shouldTestInside(element)

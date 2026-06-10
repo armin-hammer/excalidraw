@@ -57,6 +57,7 @@ import {
   isFreeDrawElement,
   isImageElement,
   isLinearElement,
+  isTableElement,
   isTextElement,
 } from "./typeChecks";
 
@@ -80,6 +81,7 @@ import type {
   ElementsMap,
   ExcalidrawElbowArrowElement,
   ExcalidrawArrowElement,
+  ExcalidrawTableElement,
 } from "./types";
 import type { ElementUpdate } from "./mutateElement";
 
@@ -884,6 +886,27 @@ export const resizeSingleElement = (
       height: Math.abs(nextHeight),
       ...rescaledPoints,
     };
+
+    if (isTableElement(latestElement) && isTableElement(origElement)) {
+      const widthScale =
+        origElement.width === 0 ? 1 : Math.abs(nextWidth) / origElement.width;
+      const heightScale =
+        origElement.height === 0
+          ? 1
+          : Math.abs(nextHeight) / origElement.height;
+
+      updates = {
+        ...updates,
+        columns: origElement.columns.map((column) => ({
+          ...column,
+          width: column.width * widthScale,
+        })),
+        rows: origElement.rows.map((row) => ({
+          ...row,
+          height: row.height * heightScale,
+        })),
+      } as ElementUpdate<ExcalidrawTableElement>;
+    }
 
     if (isBindingElement(latestElement)) {
       if (latestElement.startBinding) {

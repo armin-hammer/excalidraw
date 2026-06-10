@@ -3,6 +3,12 @@ import { isFiniteNumber, isValidPoint, pointFrom } from "@excalidraw/math";
 import {
   type CombineBrandsIfNeeded,
   DEFAULT_FONT_FAMILY,
+  DEFAULT_FONT_SIZE,
+  DEFAULT_TABLE_CELL_PADDING,
+  DEFAULT_TABLE_COLUMN_COUNT,
+  DEFAULT_TABLE_COLUMN_WIDTH,
+  DEFAULT_TABLE_ROW_COUNT,
+  DEFAULT_TABLE_ROW_HEIGHT,
   DEFAULT_TEXT_ALIGN,
   DEFAULT_VERTICAL_ALIGN,
   FONT_FAMILY,
@@ -71,6 +77,9 @@ import type {
   NonDeletedSceneElementsMap,
   OrderedExcalidrawElement,
   StrokeRoundness,
+  TableCell,
+  TableColumn,
+  TableRow,
 } from "@excalidraw/element/types";
 
 import type { MarkOptional, Mutable } from "@excalidraw/common/utility-types";
@@ -176,6 +185,7 @@ export const AllowedExcalidrawActiveTools: Record<
   eraser: false,
   custom: true,
   frame: true,
+  table: true,
   embeddable: true,
   hand: true,
   laser: false,
@@ -408,6 +418,58 @@ const restoreElementWithProperties = <
   delete ret.boundElementIds;
 
   return ret;
+};
+
+const restoreTableRows = (rows: unknown): readonly TableRow[] => {
+  if (Array.isArray(rows) && rows.length) {
+    return rows.map((row: Partial<TableRow>) => ({
+      id: row.id || randomId(),
+      height: row.height || DEFAULT_TABLE_ROW_HEIGHT,
+    }));
+  }
+
+  return Array.from({ length: DEFAULT_TABLE_ROW_COUNT }, () => ({
+    id: randomId(),
+    height: DEFAULT_TABLE_ROW_HEIGHT,
+  }));
+};
+
+const restoreTableColumns = (columns: unknown): readonly TableColumn[] => {
+  if (Array.isArray(columns) && columns.length) {
+    return columns.map((column: Partial<TableColumn>) => ({
+      id: column.id || randomId(),
+      width: column.width || DEFAULT_TABLE_COLUMN_WIDTH,
+    }));
+  }
+
+  return Array.from({ length: DEFAULT_TABLE_COLUMN_COUNT }, () => ({
+    id: randomId(),
+    width: DEFAULT_TABLE_COLUMN_WIDTH,
+  }));
+};
+
+const restoreTableCells = (
+  rows: readonly TableRow[],
+  columns: readonly TableColumn[],
+  cells: unknown,
+): readonly TableCell[] => {
+  const cellsByKey = new Map(
+    (Array.isArray(cells) ? cells : []).map((cell: Partial<TableCell>) => [
+      `${cell.rowId}:${cell.colId}`,
+      cell,
+    ]),
+  );
+
+  return rows.flatMap((row) =>
+    columns.map((column) => {
+      const cell = cellsByKey.get(`${row.id}:${column.id}`);
+      return {
+        rowId: row.id,
+        colId: column.id,
+        text: cell?.text || "",
+      };
+    }),
+  );
 };
 
 export const restoreElement = (
@@ -646,6 +708,31 @@ export const restoreElement = (
       return restoreElementWithProperties(element, {
         name: element.name ?? null,
       });
+    case "table": {
+      const rows = restoreTableRows(element.rows);
+      const columns = restoreTableColumns(element.columns);
+      const width =
+        element.width || columns.reduce((sum, column) => sum + column.width, 0);
+      const height =
+        element.height || rows.reduce((sum, row) => sum + row.height, 0);
+      element = { ...element, width, height };
+
+      return restoreElementWithProperties(element, {
+        rows,
+        columns,
+        cells: restoreTableCells(rows, columns, element.cells),
+        headerRow: element.headerRow ?? true,
+        headerColumn: element.headerColumn ?? false,
+        cellPadding: element.cellPadding ?? DEFAULT_TABLE_CELL_PADDING,
+        textAlign: element.textAlign || DEFAULT_TEXT_ALIGN,
+        verticalAlign: element.verticalAlign || DEFAULT_VERTICAL_ALIGN,
+        fontFamily: element.fontFamily || DEFAULT_FONT_FAMILY,
+        fontSize: element.fontSize || DEFAULT_FONT_SIZE,
+        textColor: element.textColor || element.strokeColor,
+        headerFill: element.headerFill ?? "#f1f3f5",
+        dividerColor: element.dividerColor || element.strokeColor,
+      });
+    }
 
     // Don't use default case so as to catch a missing an element type case.
     // We also don't want to throw, but instead return void so we filter

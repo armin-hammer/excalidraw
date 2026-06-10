@@ -153,6 +153,7 @@ export type ToolType =
   | "image"
   | "eraser"
   | "hand"
+  | "table"
   | "frame"
   | "magicframe"
   | "embeddable"
@@ -759,6 +760,7 @@ export type UIOptions = Partial<{
   canvasActions: CanvasActions;
   tools: {
     image: boolean;
+    table: boolean;
   };
   /**
    * Optionally control the editor form factor and desktop UI mode from the host app.

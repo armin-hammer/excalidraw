@@ -130,6 +130,7 @@ import {
   newArrowElement,
   newElement,
   newImageElement,
+  newTableElement,
   newLinearElement,
   newTextElement,
   refreshTextDimensions,
@@ -8090,6 +8091,8 @@ class App extends React.Component<AppProps, AppState> {
         pointerDownState,
         this.state.activeTool.type,
       );
+    } else if (this.state.activeTool.type === TOOL_TYPE.table) {
+      this.createTableElementOnPointerDown(pointerDownState);
     } else if (this.state.activeTool.type === "laser") {
       this.laserTrails.startPath(
         pointerDownState.lastCoords.x,
@@ -9597,6 +9600,47 @@ class App extends React.Component<AppProps, AppState> {
     this.setState({
       multiElement: null,
       newElement: frame,
+    });
+  };
+
+  private createTableElementOnPointerDown = (
+    pointerDownState: PointerDownState,
+  ): void => {
+    const [gridX, gridY] = getGridPoint(
+      pointerDownState.origin.x,
+      pointerDownState.origin.y,
+      this.lastPointerDownEvent?.[KEYS.CTRL_OR_CMD]
+        ? null
+        : this.getEffectiveGridSize(),
+    );
+
+    const topLayerFrame = this.getTopLayerFrameAtSceneCoords({
+      x: gridX,
+      y: gridY,
+    });
+
+    const table = newTableElement({
+      x: gridX,
+      y: gridY,
+      strokeColor: this.state.currentItemStrokeColor,
+      backgroundColor: this.state.currentItemBackgroundColor,
+      strokeWidth: this.state.currentItemStrokeWidth,
+      strokeStyle: this.state.currentItemStrokeStyle,
+      opacity: this.state.currentItemOpacity,
+      fontFamily: this.state.currentItemFontFamily,
+      fontSize: this.state.currentItemFontSize,
+      textAlign: this.state.currentItemTextAlign,
+      textColor: this.state.currentItemStrokeColor,
+      dividerColor: this.state.currentItemStrokeColor,
+      locked: false,
+      frameId: topLayerFrame ? topLayerFrame.id : null,
+    });
+
+    this.insertNewElement(table);
+
+    this.setState({
+      multiElement: null,
+      newElement: table,
     });
   };
 

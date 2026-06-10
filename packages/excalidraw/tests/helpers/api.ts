@@ -16,6 +16,7 @@ import {
   newImageElement,
   newLinearElement,
   newMagicFrameElement,
+  newTableElement,
   newTextElement,
 } from "@excalidraw/element";
 
@@ -39,6 +40,7 @@ import type {
   ExcalidrawElbowArrowElement,
   ExcalidrawArrowElement,
   FixedSegment,
+  ExcalidrawTableElement,
 } from "@excalidraw/element/types";
 
 import type { Mutable } from "@excalidraw/common/utility-types";
@@ -231,6 +233,8 @@ export class API {
     ? ExcalidrawFrameElement
     : T extends "magicframe"
     ? ExcalidrawMagicFrameElement
+    : T extends "table"
+    ? ExcalidrawTableElement
     : ExcalidrawGenericElement => {
     let element: Mutable<ExcalidrawElement> = null!;
 
@@ -362,6 +366,9 @@ export class API {
         break;
       case "magicframe":
         element = newMagicFrameElement({ ...base, width, height });
+        break;
+      case "table":
+        element = newTableElement({ ...base, width, height });
         break;
       default:
         assertNever(

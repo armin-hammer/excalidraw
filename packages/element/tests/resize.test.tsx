@@ -20,6 +20,7 @@ import type { LocalPoint } from "@excalidraw/math";
 
 import { isLinearElement } from "../src/typeChecks";
 import { resizeSingleElement } from "../src/resizeElements";
+import { dragNewElement } from "../src/dragElements";
 import { LinearElementEditor } from "../src/linearElementEditor";
 import { getElementPointsCoords } from "../src/bounds";
 
@@ -27,6 +28,7 @@ import type {
   ExcalidrawElbowArrowElement,
   ExcalidrawFreeDrawElement,
   ExcalidrawLinearElement,
+  ExcalidrawTableElement,
 } from "../src/types";
 
 unmountComponent();
@@ -301,6 +303,65 @@ describe.each(["line", "freedraw"] as const)("%s element", (type) => {
     expect(newBounds[2]).toBeCloseTo(bounds[2] + 20);
     expect(newBounds[3]).toBeCloseTo(bounds[3] + 30);
     expect(element.angle).toBeCloseTo(0);
+  });
+});
+
+describe("table element", () => {
+  it("sizes rows and columns evenly during drag creation", () => {
+    const table = API.createElement({
+      type: "table",
+      width: 300,
+      height: 150,
+    }) as ExcalidrawTableElement;
+    API.setElements([table]);
+
+    dragNewElement({
+      newElement: table,
+      elementType: "table",
+      originX: 0,
+      originY: 0,
+      x: 600,
+      y: 300,
+      width: 600,
+      height: 300,
+      shouldMaintainAspectRatio: false,
+      shouldResizeFromCenter: false,
+      zoom: h.state.zoom.value,
+      scene: h.app.scene,
+    });
+
+    expect(table.width).toBe(600);
+    expect(table.height).toBe(300);
+    expect(table.columns.map((column) => column.width)).toEqual([
+      200, 200, 200,
+    ]);
+    expect(table.rows.map((row) => row.height)).toEqual([100, 100, 100]);
+  });
+
+  it("scales row heights and column widths with the outer frame", () => {
+    const table = API.createElement({
+      type: "table",
+      width: 300,
+      height: 150,
+    }) as ExcalidrawTableElement;
+    API.setElements([table]);
+
+    resizeSingleElement(
+      600,
+      300,
+      table,
+      table,
+      h.app.scene.getNonDeletedElementsMap(),
+      h.app.scene,
+      "se",
+    );
+
+    expect(table.width).toBe(600);
+    expect(table.height).toBe(300);
+    expect(table.columns.map((column) => column.width)).toEqual([
+      200, 200, 200,
+    ]);
+    expect(table.rows.map((row) => row.height)).toEqual([100, 100, 100]);
   });
 });
 

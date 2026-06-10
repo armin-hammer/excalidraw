@@ -6415,8 +6415,8 @@ class App extends React.Component<AppProps, AppState> {
       -table.angle as Radians,
     );
     const cell = getCellAtPoint(table, {
-      x: localPoint.x - table.x,
-      y: localPoint.y - table.y,
+      x: localPoint[0] - table.x,
+      y: localPoint[1] - table.y,
     });
 
     if (!cell) {

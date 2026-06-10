@@ -89,8 +89,8 @@ export const tableWysiwyg = ({
       element.angle,
     );
     const [viewportCenterX, viewportCenterY] = getViewportCoords(
-      cellCenter.x,
-      cellCenter.y,
+      cellCenter[0],
+      cellCenter[1],
     );
     const { zoom } = app.state;
 

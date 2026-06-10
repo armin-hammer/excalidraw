@@ -261,6 +261,9 @@ import {
   getUncroppedWidthAndHeight,
   getActiveTextElement,
   isEligibleFrameChildType,
+  getCellAtPoint,
+  isTableElement,
+  updateTableCellText as updateTableElementCellText,
 } from "@excalidraw/element";
 
 import type { GlobalPoint, LocalPoint, Radians } from "@excalidraw/math";
@@ -289,6 +292,8 @@ import type {
   ExcalidrawElbowArrowElement,
   SceneElementsMap,
   ExcalidrawBindableElement,
+  ExcalidrawTableElement,
+  TableCell,
 } from "@excalidraw/element/types";
 
 import type { Mutable, ValueOf } from "@excalidraw/common/utility-types";
@@ -422,6 +427,7 @@ import { LaserTrails } from "../laser-trails";
 import { withBatchedUpdates, withBatchedUpdatesThrottled } from "../reactUtils";
 import { isPointHittingTextAutoResizeHandle } from "../textAutoResizeHandle";
 import { textWysiwyg } from "../wysiwyg/textWysiwyg";
+import { tableWysiwyg } from "../wysiwyg/tableWysiwyg";
 import { isOverScrollBars } from "../scene/scrollbars";
 
 import { isMaybeMermaidDefinition } from "../mermaid";
@@ -6366,6 +6372,116 @@ class App extends React.Component<AppProps, AppState> {
     }
   };
 
+  private setTableCellText(
+    tableId: ExcalidrawTableElement["id"],
+    cell: Pick<TableCell, "rowId" | "colId">,
+    text: string,
+  ) {
+    const table = this.scene.getElement<ExcalidrawTableElement>(tableId);
+    if (!table || !isTableElement(table)) {
+      return false;
+    }
+
+    const nextText = normalizeText(text);
+    const currentText =
+      table.cells.find(
+        (tableCell) =>
+          tableCell.rowId === cell.rowId && tableCell.colId === cell.colId,
+      )?.text || "";
+
+    if (currentText === nextText) {
+      return false;
+    }
+
+    this.scene.mutateElement(table, {
+      cells: updateTableElementCellText(table, cell, nextText),
+    });
+
+    return true;
+  }
+
+  private startTableCellEditing(
+    table: ExcalidrawTableElement,
+    sceneX: number,
+    sceneY: number,
+  ) {
+    const tableCenter = pointFrom(
+      table.x + table.width / 2,
+      table.y + table.height / 2,
+    );
+    const localPoint = pointRotateRads(
+      pointFrom(sceneX, sceneY),
+      tableCenter,
+      -table.angle as Radians,
+    );
+    const cell = getCellAtPoint(table, {
+      x: localPoint.x - table.x,
+      y: localPoint.y - table.y,
+    });
+
+    if (!cell) {
+      return false;
+    }
+
+    let didChangeText = false;
+    tableWysiwyg({
+      id: table.id,
+      cell,
+      canvas: this.canvas,
+      getViewportCoords: (x, y) => {
+        const { x: viewportX, y: viewportY } = sceneCoordsToViewportCoords(
+          {
+            sceneX: x,
+            sceneY: y,
+          },
+          this.state,
+        );
+        return [
+          viewportX - this.state.offsetLeft,
+          viewportY - this.state.offsetTop,
+        ];
+      },
+      onChange: withBatchedUpdates((text) => {
+        didChangeText =
+          this.setTableCellText(table.id, cell, text) || didChangeText;
+      }),
+      onSubmit: withBatchedUpdates(({ text }) => {
+        didChangeText =
+          this.setTableCellText(table.id, cell, text) || didChangeText;
+
+        if (didChangeText) {
+          this.store.scheduleCapture();
+        }
+
+        flushSync(() => {
+          this.setState((prevState) => ({
+            selectedElementIds: makeNextSelectedElementIds(
+              {
+                [table.id]: true,
+              },
+              prevState,
+            ),
+          }));
+        });
+
+        this.focusContainer();
+      }),
+      excalidrawContainer: this.excalidrawContainerRef.current,
+      app: this,
+    });
+
+    this.setState({
+      selectedElementIds: makeNextSelectedElementIds(
+        {
+          [table.id]: true,
+        },
+        this.state,
+      ),
+    });
+
+    return true;
+  }
+
   private startImageCropping = (image: ExcalidrawImageElement) => {
     this.store.scheduleCapture();
     this.setState({
@@ -6563,6 +6679,13 @@ class App extends React.Component<AppProps, AppState> {
     resetCursor(this.interactiveCanvas);
     if (!event[KEYS.CTRL_OR_CMD] && !this.state.viewModeEnabled) {
       const hitElement = this.getElementAtPosition(sceneX, sceneY);
+
+      if (
+        isTableElement(hitElement) &&
+        this.startTableCellEditing(hitElement, sceneX, sceneY)
+      ) {
+        return;
+      }
 
       if (isIframeLikeElement(hitElement)) {
         this.setState({

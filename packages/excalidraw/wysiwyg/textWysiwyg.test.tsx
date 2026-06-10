@@ -18,6 +18,7 @@ import {
 } from "@excalidraw/common";
 
 import type {
+  ExcalidrawTableElement,
   ExcalidrawTextElement,
   ExcalidrawTextElementWithContainer,
 } from "@excalidraw/element/types";
@@ -291,6 +292,30 @@ describe("textWysiwyg", () => {
       expect(editor).not.toBe(null);
       expect(h.state.editingTextElement?.id).toBe(text.id);
       expect(h.elements.length).toBe(1);
+    });
+
+    it("should edit table cell text when double-clicked with selection tool", async () => {
+      const table = API.createElement({
+        type: "table",
+        x: 60,
+        y: 40,
+        width: 360,
+        height: 144,
+      });
+
+      API.setElements([table]);
+      UI.clickTool("selection");
+
+      mouse.doubleClickAt(table.x + 20, table.y + 20);
+
+      const editor = await getTextEditor();
+      updateTextEditor(editor, "Q1 Revenue");
+      Keyboard.exitTextEditor(editor);
+
+      const updatedTable = h.elements[0] as ExcalidrawTableElement;
+      expect(h.elements).toHaveLength(1);
+      expect(updatedTable.type).toBe("table");
+      expect(updatedTable.cells[0]?.text).toBe("Q1 Revenue");
     });
 
     it("should reselect text after exiting wysiwyg with escape", async () => {

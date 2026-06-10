@@ -164,3 +164,20 @@ export const getCellAtPoint = (
 
   return cell ? { rowId: cell.rowId, colId: cell.colId } : null;
 };
+
+export const updateTableCellText = (
+  element: ExcalidrawTableElement,
+  target: Pick<TableCell, "rowId" | "colId">,
+  text: string,
+): readonly TableCell[] => {
+  let cellFound = false;
+  const cells = element.cells.map((cell) => {
+    if (cell.rowId === target.rowId && cell.colId === target.colId) {
+      cellFound = true;
+      return { ...cell, text };
+    }
+    return cell;
+  });
+
+  return cellFound ? cells : [...cells, { ...target, text }];
+};

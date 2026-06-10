@@ -48,7 +48,24 @@ export const mutateElement = <TElement extends Mutable<ExcalidrawElement>>(
 
   // casting to any because can't use `in` operator
   // (see https://github.com/microsoft/TypeScript/issues/21732)
-  const { points, fixedSegments, fileId } = updates as any;
+  const {
+    points,
+    fixedSegments,
+    fileId,
+    rows,
+    columns,
+    cells,
+    headerRow,
+    headerColumn,
+    cellPadding,
+    textAlign,
+    verticalAlign,
+    fontFamily,
+    fontSize,
+    textColor,
+    headerFill,
+    dividerColor,
+  } = updates as any;
 
   if (
     isElbowArrow(element) &&
@@ -131,7 +148,20 @@ export const mutateElement = <TElement extends Mutable<ExcalidrawElement>>(
     typeof updates.height !== "undefined" ||
     typeof updates.width !== "undefined" ||
     typeof fileId != "undefined" ||
-    typeof points !== "undefined"
+    typeof points !== "undefined" ||
+    typeof rows !== "undefined" ||
+    typeof columns !== "undefined" ||
+    typeof cells !== "undefined" ||
+    typeof headerRow !== "undefined" ||
+    typeof headerColumn !== "undefined" ||
+    typeof cellPadding !== "undefined" ||
+    typeof textAlign !== "undefined" ||
+    typeof verticalAlign !== "undefined" ||
+    typeof fontFamily !== "undefined" ||
+    typeof fontSize !== "undefined" ||
+    typeof textColor !== "undefined" ||
+    typeof headerFill !== "undefined" ||
+    typeof dividerColor !== "undefined"
   ) {
     ShapeCache.delete(element);
   }

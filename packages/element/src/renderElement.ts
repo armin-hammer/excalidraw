@@ -404,7 +404,10 @@ const drawTableElement = (
   context.save();
 
   if (!isTransparent(element.backgroundColor)) {
-    context.fillStyle = getTableColor(element.backgroundColor, renderConfig.theme);
+    context.fillStyle = getTableColor(
+      element.backgroundColor,
+      renderConfig.theme,
+    );
     context.fillRect(0, 0, element.width, element.height);
   }
 
@@ -476,7 +479,12 @@ const drawTableElement = (
 
     context.save();
     context.beginPath();
-    context.rect(cell.textBox.x, cell.textBox.y, cell.textBox.width, cell.textBox.height);
+    context.rect(
+      cell.textBox.x,
+      cell.textBox.y,
+      cell.textBox.width,
+      cell.textBox.height,
+    );
     context.clip();
     for (let index = 0; index < lines.length; index++) {
       context.fillText(

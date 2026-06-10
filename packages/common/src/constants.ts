@@ -336,6 +336,7 @@ export const DEFAULT_UI_OPTIONS: AppProps["UIOptions"] = {
   },
   tools: {
     image: true,
+    table: true,
   },
 };
 

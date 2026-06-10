@@ -243,14 +243,17 @@ const initializeTableRows = (
   rows: TableConstructorOpts["rows"],
   height: number | undefined,
 ): readonly TableRow[] => {
-  if (Array.isArray(rows)) {
+  if (typeof rows !== "number" && rows?.length) {
     return rows.map((row) => ({
       id: row.id || randomId(),
       height: row.height || DEFAULT_TABLE_ROW_HEIGHT,
     }));
   }
 
-  const rowCount = Math.max(1, rows || DEFAULT_TABLE_ROW_COUNT);
+  const rowCount = Math.max(
+    1,
+    typeof rows === "number" ? rows : DEFAULT_TABLE_ROW_COUNT,
+  );
   const rowHeight = height ? height / rowCount : DEFAULT_TABLE_ROW_HEIGHT;
 
   return Array.from({ length: rowCount }, () => ({
@@ -263,14 +266,17 @@ const initializeTableColumns = (
   columns: TableConstructorOpts["columns"],
   width: number | undefined,
 ): readonly TableColumn[] => {
-  if (Array.isArray(columns)) {
+  if (typeof columns !== "number" && columns?.length) {
     return columns.map((column) => ({
       id: column.id || randomId(),
       width: column.width || DEFAULT_TABLE_COLUMN_WIDTH,
     }));
   }
 
-  const columnCount = Math.max(1, columns || DEFAULT_TABLE_COLUMN_COUNT);
+  const columnCount = Math.max(
+    1,
+    typeof columns === "number" ? columns : DEFAULT_TABLE_COLUMN_COUNT,
+  );
   const columnWidth = width ? width / columnCount : DEFAULT_TABLE_COLUMN_WIDTH;
 
   return Array.from({ length: columnCount }, () => ({

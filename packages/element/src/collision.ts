@@ -84,6 +84,10 @@ export const shouldTestInside = (element: ExcalidrawElement) => {
     return false;
   }
 
+  if (element.type === "table") {
+    return true;
+  }
+
   const isDraggableFromInside =
     (hasBackground(element.type) && !isTransparent(element.backgroundColor)) ||
     hasBoundTextElement(element) ||
